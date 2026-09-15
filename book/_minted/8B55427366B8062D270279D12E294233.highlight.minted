@@ -1,4 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-\PYG{n}{mean} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mf}{0.3555248975753784}\PYG{p}{,} \PYG{l+m+mf}{0.3295726776123047}\PYG{p}{,} \PYG{l+m+mf}{0.3115333914756775}\PYG{p}{]}
-\PYG{n}{std}  \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mf}{0.3482806384563446}\PYG{p}{,} \PYG{l+m+mf}{0.3339986503124237}\PYG{p}{,} \PYG{l+m+mf}{0.3296058773994446}\PYG{p}{]}
-\end{MintedVerbatim}

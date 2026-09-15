@@ -1,6 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{DotDict}\PYG{p}{(}\PYG{n+nb}{dict}\PYG{p}{):}
-    \PYG{n+nf+fm}{\PYGZus{}\PYGZus{}getattr\PYGZus{}\PYGZus{}} \PYG{o}{=} \PYG{n+nb}{dict}\PYG{o}{.}\PYG{n}{get}
-    \PYG{n+nf+fm}{\PYGZus{}\PYGZus{}setattr\PYGZus{}\PYGZus{}} \PYG{o}{=} \PYG{n+nb}{dict}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}setitem\PYGZus{}\PYGZus{}}
-    \PYG{n+nf+fm}{\PYGZus{}\PYGZus{}delattr\PYGZus{}\PYGZus{}} \PYG{o}{=} \PYG{n+nb}{dict}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}delitem\PYGZus{}\PYGZus{}}
-\end{MintedVerbatim}

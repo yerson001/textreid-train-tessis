@@ -3,12 +3,14 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+*.pyo
 
 # Modelos y checkpoints
 *.pt
 *.pth
 *.onnx
 checkpoints/
+data/test_checkpoints/
 
 # Logs y resultados
 logs/
@@ -17,5 +19,22 @@ runs/
 # Datos
 data/
 
+# Documentación generada (PDF del libro + archivos LaTeX)
+# El PDF se regenera con `cd book && make`
+book/
+
+# IDE y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
 # Variables de entorno
 .env
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Outputs temporales
+*.tmp

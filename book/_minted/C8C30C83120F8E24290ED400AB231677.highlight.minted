@@ -1,6 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-\PYG{n}{ds}\PYG{o}{.}\PYG{n}{train}        \PYG{c+c1}{\PYGZsh{} lista de (pid, image\PYGZus{}id, img\PYGZus{}path, caption)}
-\PYG{n}{ds}\PYG{o}{.}\PYG{n}{train\PYGZus{}id\PYGZus{}container}    \PYG{c+c1}{\PYGZsh{} set de pids en train}
-\PYG{n}{ds}\PYG{o}{.}\PYG{n}{val}          \PYG{c+c1}{\PYGZsh{} dict con image\PYGZus{}pids, img\PYGZus{}paths, caption\PYGZus{}pids, captions}
-\PYG{n}{ds}\PYG{o}{.}\PYG{n}{test}         \PYG{c+c1}{\PYGZsh{} dict idem para test}
-\end{MintedVerbatim}

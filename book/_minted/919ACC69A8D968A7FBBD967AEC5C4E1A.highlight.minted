@@ -1,7 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-\PYG{n}{optimizer}\PYG{o}{.}\PYG{n}{zero\PYGZus{}grad}\PYG{p}{()}  \PYG{c+c1}{\PYGZsh{} \PYGZlt{}\PYGZhy{} SIEMPRE antes de forward}
-\PYG{n}{output} \PYG{o}{=} \PYG{n}{model}\PYG{p}{(}\PYG{n+nb}{input}\PYG{p}{)}
-\PYG{n}{loss} \PYG{o}{=} \PYG{n}{criterion}\PYG{p}{(}\PYG{n}{output}\PYG{p}{,} \PYG{n}{target}\PYG{p}{)}
-\PYG{n}{loss}\PYG{o}{.}\PYG{n}{backward}\PYG{p}{()}         \PYG{c+c1}{\PYGZsh{} acumula en .grad}
-\PYG{n}{optimizer}\PYG{o}{.}\PYG{n}{step}\PYG{p}{()}        \PYG{c+c1}{\PYGZsh{} aplica los gradientes}
-\end{MintedVerbatim}

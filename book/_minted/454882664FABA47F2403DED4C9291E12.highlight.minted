@@ -1,6 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-\PYG{n}{scaler} \PYG{o}{=} \PYG{n}{GradScaler}\PYG{p}{()}
-\PYG{n}{scaler}\PYG{o}{.}\PYG{n}{scale}\PYG{p}{(}\PYG{n}{loss}\PYG{p}{)}\PYG{o}{.}\PYG{n}{backward}\PYG{p}{()}      \PYG{c+c1}{\PYGZsh{} loss * factor \PYGZhy{}\PYGZgt{} gradientes grandes}
-\PYG{n}{scaler}\PYG{o}{.}\PYG{n}{step}\PYG{p}{(}\PYG{n}{optimizer}\PYG{p}{)}             \PYG{c+c1}{\PYGZsh{} des\PYGZhy{}escala y aplica}
-\PYG{n}{scaler}\PYG{o}{.}\PYG{n}{update}\PYG{p}{()}                    \PYG{c+c1}{\PYGZsh{} ajusta el factor dinámicamente}
-\end{MintedVerbatim}

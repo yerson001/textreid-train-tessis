@@ -1,6 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-\PYG{c+c1}{\PYGZsh{} GPU: FP16 con GradScaler}
-\PYG{c+c1}{\PYGZsh{} CPU: BF16 sin scaler (más estable)}
-\PYG{n}{precision\PYGZus{}dtype} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{bfloat16} \PYG{k}{if} \PYG{n}{config}\PYG{o}{.}\PYG{n}{device} \PYG{o}{==} \PYG{l+s+s1}{\PYGZsq{}cpu\PYGZsq{}} \PYGZbs{}
-                  \PYG{k}{else} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{float16}
-\end{MintedVerbatim}
