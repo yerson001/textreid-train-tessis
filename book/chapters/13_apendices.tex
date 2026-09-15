@@ -1,0 +1,311 @@
+% ============================================================
+% Capítulo 13 — Apéndices
+% ============================================================
+\chapter{Apéndices}
+\label{cap:apendices}
+
+\section{Glosario}
+
+\begin{description}[leftmargin=2.5cm,style=nextline]
+  \item[\textbf{BERT}] \emph{Bidirectional Encoder Representations
+    from Transformers}. Modelo de lenguaje preentrenado de Google
+    (2018). En este proyecto se usa sólo como tokenizer.
+
+  \item[\textbf{BiGRU}] GRU bidireccional. Variante de RNN que
+    procesa la secuencia en ambas direcciones y concatena los
+    estados ocultos.
+
+  \item[\textbf{CBIR}] \emph{Content-Based Image Retrieval}.
+    Recuperación de imágenes por contenido visual en lugar de
+    metadatos.
+
+  \item[\textbf{CMC}] \emph{Cumulative Matching Characteristic}.
+    Curva que mide la fracción de queries cuyo positivo aparece
+    en el top-k. \texttt{cmc[k]} = Top-(k+1) accuracy.
+
+  \item[\textbf{CUHK-PEDES}] \emph{CUHK Person Description Dataset}.
+    Benchmark estándar de \reid{} por texto, 40\,206 imágenes con
+    descripciones.
+
+  \item[\textbf{DSC}] \emph{Depthwise Separable Convolution}.
+    Factorización de una convolución estándar en depthwise
+    (por canal) + pointwise ($1 \times 1$). Reduce parámetros y
+    FLOPs.
+
+  \item[\textbf{EfficientNet-B0}] Familia de CNNs con compound
+    scaling. B0 es la variante más pequeña (\textasciitilde 5,3M
+    parámetros), preentrenada en ImageNet.
+
+  \item[\textbf{FPN}] \emph{Feature Pyramid Network}. Estructura
+    que combina features de múltiples escalas para detección.
+
+  \item[\textbf{GRU}] \emph{Gated Recurrent Unit}. RNN con dos
+    compuertas (reset, update), más simple que LSTM.
+
+  \item[\textbf{mAP}] \emph{mean Average Precision}. Promedio de
+    AP sobre todas las queries. Mide calidad del ranking
+    completo.
+
+  \item[\textbf{NMS}] \emph{Non-Maximum Suppression}. Técnica para
+    eliminar detecciones redundantes.
+
+  \item[\textbf{Person Re-ID}] Tarea de reconocer a la misma
+    persona en diferentes cámaras o momentos.
+
+  \item[\textbf{Triplet loss}] Pérdida que enforce que un anchor
+    esté más cerca de un positivo que de un negativo, con un
+    margen dado.
+
+  \item[\textbf{U-TextReIDNet}] \emph{Unified Text ReID Network}.
+    Modelo del paper que une detección humana con \reid{} por
+    texto.
+
+  \item[\textbf{Top-k}] Fracción de queries cuyo positivo aparece
+    entre los primeros $k$ resultados.
+\end{description}
+
+\section{Tabla maestra de parámetros del modelo}
+
+\begin{longtable}{p{4cm}p{3.5cm}p{6cm}}
+\toprule
+\textbf{Capa} & \textbf{Forma de salida} & \textbf{Parámetros} \\
+\midrule
+\endhead
+\texttt{Embedding(29610, 512)}
+  & \dims{(B, 100, 512)}
+  & 15,16 M \\
+\texttt{Dropout(0.30)}
+  & \dims{(B, 100, 512)}
+  & 0 \\
+\texttt{BiGRU(512, 1024, bidir)}
+  & \dims{(B, 100, 2048)}
+  & 4,72 M \\
+Suma fwd+bwd / 2
+  & \dims{(B, 100, 1024)}
+  & 0 \\
+Permute + unsqueeze
+  & \dims{(B, 1024, 100, 1)}
+  & 0 \\
+\midrule
+\texttt{EfficientNet-B0}
+  & \dims{(B, 1280, 16, 16)}
+  & 5,29 M \\
+\texttt{DSC(1280, 1024)}
+  & \dims{(B, 1024, 16, 16)}
+  & \textasciitilde 14 K \\
+\texttt{AdaptiveMaxPool2d(1, 1)}
+  & \dims{(B, 1024, 1, 1)}
+  & 0 \\
+\texttt{DSC(1024, 1024)}
+  & \dims{(B, 1024, 1, 1)}
+  & \textasciitilde 10 K \\
+\midrule
+Classifier(1024, num\_classes)
+  & \dims{(B, num\_classes)}
+  & \textasciitilde 11 K por clase \\
+\midrule
+\textbf{Total (sin clasificador)}
+  & ---
+  & \textbf{\textasciitilde 25,2 M} \\
+\textbf{Total (con clasificador)}
+  & ---
+  & \textbf{\textasciitilde 25,2 M + $1024 \cdot N_c$} \\
+\bottomrule
+\caption{Recuento completo de parámetros. $N_c$ = número de
+identidades (clases) en el dataset de entrenamiento. Para
+CUHK-PEDES, $N_c = 11\,003$.}
+\label{tab:master-params}
+\end{longtable}
+
+\section{Tabla maestra de hiperparámetros de entrenamiento}
+
+\begin{longtable}{p{4cm}p{4cm}p{6cm}}
+\toprule
+\textbf{Hiperparámetro} & \textbf{Valor} & \textbf{Ubicación} \\
+\midrule
+\endhead
+Épocas
+  & 60
+  & \fline{config.py}{71} \\
+Batch size (default)
+  & 8
+  & \fline{config.py}{123,129} \\
+Batch size (Jetson)
+  & 4
+  & \fline{config.py}{126} \\
+Learning rate inicial
+  & 1e-3
+  & \fline{config.py}{75} \\
+Weight decay
+  & (decoupled, AdamW)
+  & \fline{train.py}{98} \\
+$\beta_1$ AdamW
+  & 0.90
+  & \fline{config.py}{72} \\
+$\beta_2$ AdamW
+  & 0.999
+  & \fline{config.py}{73} \\
+LR decay epochs
+  & [20, 40]
+  & \fline{config.py}{74} \\
+LR decay factor
+  & 0.1 (default PyTorch)
+  & (implícito) \\
+Mixed precision (GPU)
+  & FP16
+  & \fline{train.py}{130} \\
+Mixed precision (CPU)
+  & BF16
+  & \fline{train.py}{130} \\
+Ranking loss weight $\alpha$
+  & 1.0
+  & \fline{config.py}{87} \\
+Identity loss weight $\beta$
+  & 1.0
+  & \fline{config.py}{88} \\
+Triplet margin
+  & 0.5
+  & \fline{config.py}{86} \\
+Seed
+  & 3407
+  & \fline{config.py}{79} \\
+\bottomrule
+\caption{Hiperparámetros de entrenamiento.}
+\label{tab:master-hyperparams}
+\end{longtable}
+
+\section{Resultados reportados en el paper}
+
+\begin{longtable}{p{3.5cm}p{2.5cm}p{2.5cm}p{2.5cm}}
+\toprule
+\textbf{Dataset} & \textbf{Top-1} & \textbf{Top-5} & \textbf{Top-10} \\
+\midrule
+\endhead
+CUHK-PEDES & 54,02\% & 75,51\% & 85,28\% \\
+RSTPReid   & 38,45\% & ---    & ---    \\
+\bottomrule
+\caption{Resultados del paper original.}
+\label{tab:paper-results}
+\end{longtable}
+
+\noindent\textbf{U-TextReIDNet}: 38,77 M parámetros totales.
+
+\section{Mapa de archivos}
+
+\begin{verbatim}
+textreid-train/
+|-- README.md
+|-- config.py                     # Configuración global
+|-- train.py                      # Script de entrenamiento
+|-- evaluate.py                   # Script de evaluación
+|-- requirements.txt
+|
+|-- model/
+|   |-- textreidnet.py            # Modelo principal
+|   |-- visual_network.py         # EfficientNet-B0 wrapper
+|   |-- language_network.py       # BERT tokenizer + BiGRU
+|   |-- efficientnet_backbone.py  # Variante multi-stage (no usada)
+|   |-- model_utils.py            # DepthwiseSeparableConv, etc.
+|
+|-- datasets/
+|   |-- bases.py                  # ImageTextDataset, etc.
+|   |-- cuhkpedes.py              # Loader dataset original
+|   |-- cuhkpedes_hf.py           # Loader dataset HuggingFace
+|   |-- cuhkpedes_dataloader.py   # Constructor de DataLoaders
+|   |-- bert_tokenizer.py         # BERT tokenizer
+|   |-- simple_tokenizer.py       # CLIP-style BPE tokenizer
+|   |-- tiktoken_tokenizer.py     # OpenAI tiktoken
+|
+|-- evaluation/
+|   |-- ranking_loss.py           # Triplet semi-hard
+|   |-- identity_loss.py          # Cross-entropy simétrica
+|   |-- focal_loss.py             # Sigmoid focal (no usada)
+|   |-- evaluations.py            # Top-k, mAP
+|
+|-- utils/
+|   |-- iotools.py                # read_image, read_json
+|   |-- miscellaneous_utils.py    # set_seed, pad_tokens, etc.
+|
+|-- scripts/
+|   `-- download_hf_dataset.py    # Descarga y convierte HF
+|
+|-- data/
+|   `-- CUHK-PEDES-HF/            # Dataset descargado
+|       |-- raw.parquet
+|       |-- reid_raw.json
+|       `-- imgs/all/*.jpg
+|
+|-- docs/
+|   `-- paper.md                  # Paper traducido al español
+|
+|-- notebooks/
+|   `-- 01_lab_validate_dataset.ipynb
+|
+`-- book/                         # (este libro)
+    |-- main.tex
+    |-- chapters/*.tex
+    `-- figures/*.tikz
+\end{verbatim}
+
+\section{Cheatsheet de Bash}
+
+\begin{minted}[language=bash, basicstyle=\ttfamily\small, frame=single]{python}
+# Instalar dependencias
+pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu117
+
+# Descargar dataset
+python scripts/download_hf_dataset.py
+
+# Entrenar
+python train.py --dataset_source huggingface --epochs 60
+
+# Evaluar
+python evaluate.py \
+    --checkpoint data/checkpoints/TextReIDNet_latest.pth.tar \
+    --dataset_source huggingface \
+    --split test
+
+# Inspeccionar configuración
+python -c "from config import sys_configuration; \
+    cfg = sys_configuration(); print(cfg)"
+\end{minted}
+
+\section{Referencias}
+
+\begin{itemize}
+  \item \textbf{Agyeman, R. \& Rinner, B.} (2024).
+    \emph{Decentralized Text-Based Person Re-Identification in
+    Multicamera Networks}. IEEE Access.
+    DOI: 10.1109/ACCESS.2024.3501382.
+    Traducción al español en \file{docs/paper.md}.
+
+  \item \textbf{Tan, M. \& Le, Q. V.} (2019).
+    \emph{EfficientNet: Rethinking Model Scaling for
+    Convolutional Neural Networks}. ICML.
+    arXiv:1905.11946.
+
+  \item \textbf{Devlin, J., Chang, M.-W., Lee, K. \& Toutanova,
+    K.} (2018). \emph{BERT: Pre-training of Deep Bidirectional
+    Transformers for Language Understanding}. NAACL.
+    arXiv:1810.04805.
+
+  \item \textbf{Cho, K. et al.} (2014). \emph{Learning Phrase
+    Representations using RNN Encoder-Decoder for Statistical
+    Machine Translation}. EMNLP.
+
+  \item \textbf{Howard, A. G. et al.} (2017).
+    \emph{MobileNets: Efficient Convolutional Neural Networks
+    for Mobile Vision Applications}. arXiv:1704.04861.
+
+  \item \textbf{Li, S., Xiao, T., Li, H., Zhou, B., Yue, D. \&
+    Wang, X.} (2017). \emph{Person Search with Natural Language
+    Description}. ICCV.
+
+  \item \textbf{Loshchilov, I. \& Hutter, F.} (2019).
+    \emph{Decoupled Weight Decay Regularization}. ICLR.
+    (AdamW).
+
+  \item \textbf{Lin, T.-Y., Goyal, P., Girshick, R., He, K. \&
+    Dollár, P.} (2017). \emph{Focal Loss for Dense Object
+    Detection}. ICCV. (RetinaNet).
+\end{itemize}

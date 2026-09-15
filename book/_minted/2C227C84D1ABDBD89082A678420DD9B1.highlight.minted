@@ -1,0 +1,37 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{TextReIDNet}\PYG{p}{(}\PYG{n}{nn}\PYG{o}{.}\PYG{n}{Module}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}La clase principal del modelo.\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{configs}\PYG{p}{:} \PYG{n+nb}{dict} \PYG{o}{=} \PYG{k+kc}{None}\PYG{p}{):}
+        \PYG{c+c1}{\PYGZsh{} Llama al constructor de nn.Module (registra parámetros,}
+        \PYG{c+c1}{\PYGZsh{} buffers, submódulos, etc.)}
+        \PYG{n+nb}{super}\PYG{p}{(}\PYG{n}{TextReIDNet}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{p}{)}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{()}
+
+        \PYG{c+c1}{\PYGZsh{} Validación: configs es obligatorio}
+        \PYG{k}{if} \PYG{n}{configs} \PYG{o+ow}{is} \PYG{k+kc}{None}\PYG{p}{:}
+            \PYG{k}{raise} \PYG{n+ne}{ValueError}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}`configs` parameter can not be None\PYGZdq{}}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Guardar referencia a la configuración completa}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{configs} \PYG{o}{=} \PYG{n}{configs}
+
+        \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{} Rama visual \PYGZhy{}\PYGZhy{}\PYGZhy{}}
+        \PYG{c+c1}{\PYGZsh{} VisualNetwork = EfficientNet\PYGZhy{}B0 + wrapper}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{visual\PYGZus{}network} \PYG{o}{=} \PYG{n}{VisualNetwork}\PYG{p}{()}
+
+        \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{} Rama de lenguaje \PYGZhy{}\PYGZhy{}\PYGZhy{}}
+        \PYG{c+c1}{\PYGZsh{} GRULanguageNetwork = Embedding + Dropout + BiGRU}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{language\PYGZus{}network} \PYG{o}{=} \PYG{n}{GRULanguageNetwork}\PYG{p}{(}\PYG{n}{configs}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} \PYGZhy{}\PYGZhy{}\PYGZhy{} Capas de proyección al espacio conjunto \PYGZhy{}\PYGZhy{}\PYGZhy{}}
+        \PYG{c+c1}{\PYGZsh{} 1ra DSC: reduce canales de 1280 (EffNet) a 1024 (joint dim)}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{visual\PYGZus{}features\PYGZus{}downscale} \PYG{o}{=} \PYG{n}{DepthwiseSeparableConv}\PYG{p}{(}\PYG{l+m+mi}{1280}\PYG{p}{,} \PYG{l+m+mi}{1024}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Adaptive max pooling: colapsa (H, W) a (1, 1)}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{adaptive\PYGZus{}max\PYGZus{}pooling} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{AdaptiveMaxPool2d}\PYG{p}{((}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{))}
+
+        \PYG{c+c1}{\PYGZsh{} 2da DSC: mantiene 1024 canales, proyecta al espacio conjunto}
+        \PYG{c+c1}{\PYGZsh{} COMPARTIDA con la rama textual (ver text\PYGZus{}embedding)}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{depthwise\PYGZus{}seperable\PYGZus{}convolution} \PYG{o}{=} \PYG{n}{DepthwiseSeparableConv}\PYG{p}{(}
+            \PYG{l+m+mi}{1024}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{configs}\PYG{o}{.}\PYG{n}{feature\PYGZus{}length}
+        \PYG{p}{)}
+\end{MintedVerbatim}

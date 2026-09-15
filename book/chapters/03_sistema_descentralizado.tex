@@ -1,0 +1,220 @@
+% ============================================================
+% Capítulo 3 — Sistema descentralizado
+% ============================================================
+\chapter{Sistema descentralizado multicámara}
+\label{cap:sistema-descentralizado}
+
+Este capítulo describe el sistema completo de vigilancia en el que
+se enmarca U-TextReIDNet. \textbf{No hay código en este proyecto
+que lo implemente}, pero es útil entenderlo para saber qué parte
+del paper es la que realmente vive en \texttt{textreid-train}.
+
+\section{Arquitectura del sistema}
+
+El sistema propuesto en \file{docs/paper.md} (§\textsc{Iii}-B)
+tiene tres capas:
+
+\begin{enumerate}
+  \item \textbf{Nodos de cámara} ($d_1, \ldots, d_n$): capturan
+        vídeo, mantienen galerías locales y ejecutan
+        U-TextReIDNet para hacer inferencia local.
+  \item \textbf{Infraestructura de comunicaciones}: red entre
+        nodos y estación de control.
+  \item \textbf{Estación de control}: servidor de aplicaciones
+        (con U-TextReIDNet también) + aplicación web
+        (\emph{Flask}).
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    font=\sffamily\small,
+    node distance=0.5cm and 0.4cm,
+    every node/.style={align=center},
+    cam/.style={
+        rectangle, draw=black, thick, rounded corners=2pt,
+        minimum height=1.2cm, minimum width=1.8cm,
+        fill=yellow!15
+    },
+    serv/.style={
+        rectangle, draw=black, thick, rounded corners=2pt,
+        minimum height=1.5cm, minimum width=3cm,
+        fill=red!15
+    },
+    cli/.style={
+        rectangle, draw=black, thick, rounded corners=2pt,
+        minimum height=1.2cm, minimum width=2cm,
+        fill=cyan!15
+    },
+    arr/.style={
+        -{Stealth[length=2.5mm,width=2mm]}, thick
+    }
+]
+
+% Nodos de cámara
+\node[cam] (d1) {$d_1$\\\footnotesize Jetson};
+\node[cam, right=0.5cm of d1] (d2) {$d_2$\\\footnotesize Jetson};
+\node[cam, right=0.5cm of d2] (dn) {$d_n$\\\footnotesize Jetson};
+\node[right=0.1cm of dn] {\ldots};
+
+% Estación de control
+\node[serv, below=2cm of d2] (srv) {\textbf{Servidor de apps}\\CPU i7 + GTX1050TI};
+
+% Cliente
+\node[cli, below=1.5cm of srv] (cli) {\textbf{Cliente}\\Navegador web};
+
+% Conexiones
+\draw[arr] (d1) -- (srv);
+\draw[arr] (d2) -- (srv);
+\draw[arr] (dn) -- (srv);
+\draw[arr, dashed] (srv) -- (cli) node[midway, right] {\footnotesize Flask};
+
+\end{tikzpicture}
+\caption{Topología del sistema descentralizado. Cada cámara corre
+U-TextReIDNet localmente; sólo transmite vídeo cuando su puntuación
+supera un umbral y es la mejor de todas.}
+\label{fig:topologia}
+\end{figure}
+
+\section{Flujo operativo}
+
+El paper describe cinco fases (\file{docs/paper.md}, líneas 185--195):
+
+\subsection*{a) Inicialización y solicitud}
+
+Al encenderse, cada cámara se conecta al servidor de aplicaciones
+y reporta su estado (\emph{online-idle}, \emph{online-búsqueda},
+\emph{transmitiendo}, \emph{offline}). El usuario inicia o detiene
+búsquedas desde la aplicación.
+
+\subsection*{b) Captura de fotogramas y galería local}
+
+Cuando una cámara recibe la orden de búsqueda, captura vídeo y
+usa R-MHParsNet para generar una galería local de instancias
+humanas detectadas en el fotograma actual. \emph{Cada fotograma
+se trata como datos nuevos}: no hay relación temporal entre
+galerías consecutivas.
+
+\subsection*{c) Inferencia local}
+
+Cada cámara calcula la similitud coseno entre cada imagen de su
+galería local y la descripción textual proporcionada por el
+usuario. Selecciona la imagen mejor clasificada y, si su
+puntuación supera un umbral $\theta$, la procesa para incluir
+un bounding box alrededor de la persona objetivo.
+
+\subsection*{d) Identificación global}
+
+Cada segundo, todas las cámaras cuyas puntuaciones superen
+$\theta$ envían sus puntuaciones al servidor. El servidor
+selecciona la puntuación más alta y notifica a esa cámara para
+que transmita vídeo.
+
+\subsection*{e) Finalización}
+
+El usuario debe detener una búsqueda antes de iniciar otra.
+
+\section{Implementación de la estación de control}
+
+La aplicación de usuario es una webapp \emph{Flask}
+\cite{grinberg2018flask} que corre en el servidor de aplicaciones.
+Se divide en dos subsistemas:
+
+\begin{itemize}
+  \item \textbf{Subsistema de comunicación}: usa
+        \href{https://zeromq.org/}{ZMQ} para mensajería
+        asíncrona entre el servidor y los nodos, y
+        \href{https://mqtt.org/}{MQTT} para publicar
+        resultados de búsqueda desde los nodos al servidor.
+  \item \textbf{Subsistema de vídeo}: usa
+        \href{https://github.com/jeffbass/imagezmq}{ImageZMQ}
+        para gestionar las transmisiones de vídeo entrantes
+        cuando se detecta a la persona objetivo.
+\end{itemize}
+
+Estos subsistemas corren en hilos separados para que la UI no se
+bloquee durante el procesamiento.
+
+\section{Por qué este proyecto no incluye el sistema}
+
+El repositorio \texttt{textreid-train} es una versión
+\emph{training-only} del proyecto original. El README lo explica:
+
+\begin{quote}
+El proyecto original es un sistema completo de vigilancia
+multicámara descentralizada con scripts de inferencia, una webapp
+Flask, MySQL/MQTT y detección humana. \emph{Esta versión quita
+todo eso} -- sólo tiene lo necesario para \textbf{entrenar} y
+\textbf{evaluar}.
+\end{quote}
+
+\noindent Las piezas eliminadas son:
+
+\begin{itemize}
+  \item \file{model/unity.py}: wrapper de detección + re-ID
+        (innecesario para entrenamiento puro).
+  \item \file{model/human_detection_network.py}: detector
+        (R-MHParsNet no se entrena aquí).
+  \item \file{model/feature_pyramid_network.py}: usado solo por
+        el detector.
+  \item \file{model/mask_head.py}, \file{parsing_head.py}:
+        cabezas del detector.
+  \item \file{surveillance_application/}: la webapp Flask.
+  \item \file{demo/}: demo web.
+  \item \file{inference/}: scripts de inferencia sobre
+        imágenes/vídeos.
+\end{itemize}
+
+Para desplegar el sistema completo habría que integrar este modelo
+con un detector (YOLOv8, por ejemplo) y la infraestructura
+descrita arriba. Eso queda fuera del alcance del libro.
+
+\section{Rendimiento reportado en el paper}
+
+El paper mide tiempos de inferencia en dos plataformas:
+
+\begin{table}[H]
+\centering
+\caption{Tiempos de inferencia reportados en el paper (media sobre
+20 iteraciones).}
+\label{tab:tiempos-paper}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Modelo} & \textbf{PC (CPU+GPU)} & \textbf{Jetson Nano} \\
+\midrule
+MFPE        & 0{,}69204 s & --- \\
+TextReIDNet & 0{,}00477 s & --- \\
+U-TextReIDNet & 0{,}04995 s & 0{,}75013 s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Para una galería de 10 personas:
+
+\begin{table}[H]
+\centering
+\caption{Tiempos de inferencia para 10 imágenes de galería.}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Modelo} & \textbf{PC} & \textbf{Jetson Nano} \\
+\midrule
+MFPE          & 2{,}46102 s & --- \\
+TextReIDNet   & 1{,}28512 s & --- \\
+U-TextReIDNet & 0{,}09525 s & 0{,}75013 s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent La conclusión clave es que U-TextReIDNet puede procesar
+galerías pequeñas en tiempo real incluso en hardware embebido, y
+su tiempo de inferencia escala linealmente con el número de
+personas ($O(N \cdot n)$ donde $N$ es la densidad y $n$ el
+número de características).
+
+\section{Lo que este proyecto sí hace}
+
+Aunque no incluye el sistema distribuido, el modelo entrenado en
+\texttt{textreid-train} \emph{es} el mismo TextReIDNet que se usa
+en el paper como submódulo de U-TextReIDNet. Por tanto, un
+checkpoint producido aquí puede integrarse en el sistema
+completo con sólo cambiar la arquitectura de detección.

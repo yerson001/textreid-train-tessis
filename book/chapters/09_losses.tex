@@ -1,0 +1,322 @@
+% ============================================================
+% Capítulo 9 — Losses: conceptos + código
+% ============================================================
+\chapter{Funciones de pérdida: triplet y cross-entropy}
+\label{cap:losses}
+
+Este capítulo explica los conceptos detrás de las dos pérdidas
+usadas y muestra su código línea por línea.
+
+\section{¿Qué es un embedding y por qué necesita pérdidas?}
+
+Después del forward tenemos dos vectores por muestra:
+\begin{itemize}
+  \item $\mathbf{I}' \in \mathbb{R}^{1024}$ (imagen).
+  \item $\mathbf{T}' \in \mathbb{R}^{1024}$ (texto).
+\end{itemize}
+
+\noindent\textbf{Objetivo}: vectores de la misma persona deben
+estar \emph{cerca}, y de personas diferentes \emph{lejos}.
+
+\noindent\textbf{Problema}: el modelo no sabe cómo hacerlo solo.
+Necesitamos una función que mida qué tan mal lo está haciendo y
+guíe el aprendizaje: la \textbf{pérdida} (loss).
+
+\section{¿Qué es la triplet loss?}
+
+\subsection{Concepto}
+
+La \emph{triplet loss}~\cite{schroff2015facenet} trabaja con
+\emph{triplets}: tríos de muestras (anchor, positive, negative).
+
+\begin{itemize}
+  \item \textbf{Anchor} (A): muestra de referencia.
+  \item \textbf{Positive} (P): muestra del \emph{mismo} pid.
+  \item \textbf{Negative} (N): muestra de \emph{otro} pid.
+\end{itemize}
+
+La pérdida enforces que:
+
+\begin{equation}
+  \text{sim}(A, P) - \text{sim}(A, N) + \text{margin} \leq 0
+  \label{eq:triplet}
+\end{equation}
+
+\noindent\textbf{En palabras}: el anchor debe estar \emph{más
+cerca} del positive que del negative, con un margen mínimo
+($\text{margin} = 0.5$ en este proyecto).
+
+\subsection{¿Por qué el margen?}
+
+Sin margen, basta con que $\text{sim}(A, P) > \text{sim}(A, N)$.
+Esto da una solución trivial: todos los embeddings en un punto.
+Con margen exigimos que la diferencia sea $\geq \text{margin}$,
+lo que \emph{obliga} a aprender embeddings informativos.
+
+\section{¿Qué es semi-hard mining?}
+
+\subsection{Los tres tipos de negativos}
+
+Para un anchor dado, hay tres tipos de negativos:
+
+\begin{enumerate}
+  \item \textbf{Easy}: $\text{sim}(A, N) \ll \text{sim}(A, P)$.
+        El modelo ya los clasifica bien. \emph{No ayudan} al
+        aprendizaje.
+  \item \textbf{Hard}: $\text{sim}(A, N) > \text{sim}(A, P)$.
+        El modelo ya los confunde. Contribuyen mucho al
+        gradiente pero pueden hacer el entrenamiento inestable.
+  \item \textbf{Semi-hard}: $\text{sim}(A, P) < \text{sim}(A, N)
+        < \text{sim}(A, P) + \text{margin}$. El modelo está
+        cerca pero no del todo mal. \emph{Ideal}: gradiente
+        útil + entrenamiento estable.
+\end{enumerate}
+
+\subsection{Criterio usado en este proyecto}
+
+El código implementa semi-hard mining~\cite{schroff2015facenet}:
+\begin{itemize}
+  \item Si hay negativos semi-hard disponibles, elegir uno
+    aleatoriamente.
+  \item Si no hay ninguno, usar uno cualquiera (caso
+    degenerado).
+\end{itemize}
+
+\noindent\textbf{Ventaja}: estable y eficiente; converge más
+rápido que easy mining sin los problemas de hard mining.
+
+\section{¿Qué es la cross-entropy?}
+
+\subsection{Clasificación como identidad}
+
+Otra forma de entrenar el modelo es agregar una cabeza de
+\textbf{clasificación} que predice el pid (identidad de persona).
+Si el modelo predice correctamente, está discriminando bien.
+
+La cross-entropy mide qué tan lejos están las predicciones del
+label correcto:
+
+\begin{equation}
+  \mathcal{L}_{\text{CE}} = -\sum_{c=1}^{C} y_c \cdot \log(\hat{y}_c)
+  \label{eq:ce}
+\end{equation}
+
+\noindent donde $y_c$ es 1 si $c$ es el pid correcto, $\hat{y}_c$ es
+la probabilidad predicha para la clase $c$.
+
+\subsection{PyTorch lo hace solo}
+
+\texttt{nn.CrossEntropyLoss(reduction='mean')} computa la CE
+promediada sobre el batch. Internamente aplica
+\texttt{LogSoftmax + NLLLoss}.
+
+\section{¿Por qué simétrica (i2t + t2i)?}
+
+Tanto RankingLoss como IdentityLoss se calculan en
+\textbf{ambas direcciones}:
+\begin{itemize}
+  \item \textbf{i2t}: predice la clase del texto desde el
+    embedding de la imagen.
+  \item \textbf{t2i}: predice la clase de la imagen desde el
+    embedding del texto.
+\end{itemize}
+
+\noindent\textbf{¿Por qué?} El modelo debe ser bueno
+\emph{simétricamente}: si una imagen $\leftrightarrow$ texto
+describe a la misma persona, ambos sentidos deben predecir el
+mismo pid. Esto fuerza coherencia en ambos lados del embedding.
+
+\section{Pérdida total}
+
+\begin{equation}
+  \mathcal{L}_{\text{total}} = \alpha \cdot \mathcal{L}_{\text{rank}}
+                             + \beta  \cdot \mathcal{L}_{\text{ID}}
+\end{equation}
+
+\noindent En este proyecto $\alpha = \beta = 1.0$
+(\fline{config.py}{87-88}).
+
+\section{Código: \texttt{calculate\_similarity}}
+
+\begin{minted}[language=Python, numbers, firstnumber=11, linerange=11-18]{python}
+def calculate_similarity(image_embedding, text_embedding):
+    """Calcula la matriz de similitud coseno entre imágenes y textos."""
+
+    # Aplanar embeddings a (B, 1024) por si vienen con más dims
+    image_embedding = image_embedding.view(image_embedding.size(0), -1)
+    text_embedding = text_embedding.view(text_embedding.size(0), -1)
+
+    # Normalizar L2 (norma = 1)
+    # +1e-8 para evitar división por cero
+    image_embedding_norm = image_embedding / (
+        image_embedding.norm(dim=1, keepdim=True) + 1e-8
+    )
+    text_embedding_norm = text_embedding / (
+        text_embedding.norm(dim=1, keepdim=True) + 1e-8
+    )
+
+    # Producto matricial: similitud entre cada par (img_i, txt_j)
+    similarity = torch.mm(image_embedding_norm, text_embedding_norm.t())
+    return similarity
+\end{minted}
+
+\section{Código: \texttt{RankingLoss}}
+
+\begin{minted}[language=Python, numbers, firstnumber=21, linerange=21-51]{python}
+class RankingLoss(nn.Module):
+    """Triplet loss con minería semi-hard."""
+
+    def __init__(self, config=None):
+        super(RankingLoss, self).__init__()
+        self.config = config
+
+    def semi_hard_negative(self, loss):
+        """Elige un negativo semi-hard al azar."""
+        # loss: array con losses para cada negativo
+        # logical_and(0 < loss < margin)
+        negative_index = np.where(
+            np.logical_and(loss < self.config.margin, loss > 0)
+        )[0]
+        return np.random.choice(negative_index) if len(negative_index) > 0 else None
+
+    def get_triplets(self, similarity, labels):
+        """Para cada anchor, busca un par (positivo, negativo)."""
+        similarity = similarity.cpu().data.numpy()
+        labels = labels.cpu().data.numpy()
+        triplets = []
+
+        for idx, label in enumerate(labels):
+            # Índices con OTRO pid (negativos)
+            negative = np.where(labels != label)[0]
+            # Similitud del anchor consigo mismo (~1)
+            ap_sim = similarity[idx, idx]
+            # loss = sim(a,n) - sim(a,p) + margin
+            loss = similarity[idx, negative] - ap_sim + self.config.margin
+            # Elegir un negativo semi-hard
+            negetive_index = self.semi_hard_negative(loss)
+            if negetive_index is not None:
+                triplets.append([idx, idx, negative[negetive_index]])
+
+        if len(triplets) == 0:
+            triplets.append([idx, idx, negative[0]])
+        triplets = np.array(triplets)
+        return torch.LongTensor(triplets)
+\end{minted}
+
+\begin{minted}[language=Python, numbers, firstnumber=54, linerange=54-72]{python}
+    def forward(self, img, txt, label, sim_neg=None):
+        """img: (B,1024), txt: (B,1024), label: (B,)"""
+        similarity = calculate_similarity(img, txt)
+        if sim_neg is not None:
+            similarity = similarity + sim_neg
+
+        # Triplets image->text
+        image_triplets = self.get_triplets(similarity, label)
+        image_anchor_loss = F.relu(
+            self.config.margin
+            - similarity[image_triplets[:, 0], image_triplets[:, 1]]
+            + similarity[image_triplets[:, 0], image_triplets[:, 2]]
+        )
+
+        # Triplets text->image (transponer)
+        text_triplets = self.get_triplets(similarity.t(), label)
+        similarity = similarity.t()
+        texy_anchor_loss = F.relu(
+            self.config.margin
+            - similarity[text_triplets[:, 0], text_triplets[:, 1]]
+            + similarity[text_triplets[:, 0], text_triplets[:, 2]]
+        )
+
+        loss = torch.sum(image_anchor_loss) + torch.sum(texy_anchor_loss)
+        return loss
+\end{minted}
+
+\section{Código: \texttt{IdentityLoss}}
+
+\begin{minted}[language=Python, numbers, firstnumber=10, linerange=10-27]{python}
+def weights_init_classifier(m):
+    """Inicializa capas Linear con N(0, 0.001) y bias=0."""
+    classname = m.__class__.__name__
+    if classname.find('Linear') != -1:
+        init.normal_(m.weight.data, std=0.001)
+        init.constant_(m.bias.data, 0.0)
+
+
+class classifier(nn.Module):
+    """Capa lineal simple: input_dim -> output_dim."""
+
+    def __init__(self, input_dim, output_dim):
+        super(classifier, self).__init__()
+        self.block = nn.Linear(input_dim, output_dim)
+        self.block.apply(weights_init_classifier)
+
+    def forward(self, x):
+        return self.block(x)
+\end{minted}
+
+\begin{minted}[language=Python, numbers, firstnumber=30, linerange=30-56]{python}
+class IdentityLoss(nn.Module):
+    """Cross-entropy simétrica: image->text + text->image."""
+
+    def __init__(self, config=None, part=1, class_num=None):
+        super(IdentityLoss, self).__init__()
+        self.part = part
+
+        # Crear `part` clasificadores (en este proyecto part=1)
+        W = []
+        for i in range(part):
+            W.append(classifier(config.feature_length, class_num))
+        self.W = nn.Sequential(*W)
+
+    def calculate_IdLoss(self, image_embedding_local,
+                         text_embedding_local, label):
+        """image_embedding_local: (B,1024,1), text_embedding_local: (B,1024,1)"""
+        label = label.view(label.size(0))
+        criterion = nn.CrossEntropyLoss(reduction='mean')
+
+        Lipt_local = 0  # image->text loss
+        Ltpi_local = 0  # text->image loss
+
+        for i in range(self.part):
+            # Proyectar embedding al espacio de clases
+            score_i2t_local_i = self.W[i](image_embedding_local[:, :, i])
+            score_t2i_local_i = self.W[i](text_embedding_local[:, :, i])
+
+            Lipt_local += criterion(score_i2t_local_i, label)
+            Ltpi_local += criterion(score_t2i_local_i, label)
+
+        loss = (Lipt_local + Ltpi_local) / self.part
+        return loss
+
+    def forward(self, image_embedding_local,
+                text_embedding_local, label):
+        return self.calculate_IdLoss(image_embedding_local,
+                                     text_embedding_local, label)
+\end{minted}
+
+\section{Uso conjunto en \texttt{train.py}}
+
+\begin{minted}[language=Python, numbers, firstnumber=130, linerange=130-150]{python}
+with torch.autocast(device_type=config.device, dtype=torch.float16):
+    # Forward
+    visual_embeddings, textual_embeddings = model(
+        image=preprocessed_images,
+        text_ids=token_ids,
+        text_length=orig_token_length
+    )
+
+    # Aplanar a (B, 1024) - RankingLoss espera aplanados
+    visual_emb_flat = visual_embeddings.view(visual_embeddings.size(0), -1)
+    text_emb_flat = textual_embeddings.view(textual_embeddings.size(0), -1)
+    labels_flat = labels.view(-1)
+
+    # RankingLoss: triplet semi-hard
+    ranking_loss = ranking_loss_fnx(visual_emb_flat, text_emb_flat, labels_flat)
+
+    # IdentityLoss: cross-entropy simétrica
+    identity_loss = identity_loss_fnx(visual_embeddings, textual_embeddings, labels_flat)
+
+    # Pérdida total: combinación ponderada
+    total_loss = (config.ranking_loss_alpha * ranking_loss
+                  + config.identity_loss_beta * identity_loss)
+\end{minted}

@@ -1,0 +1,14 @@
+torch==1.13.1+cu117
+torchvision==0.14.1+cu117
+numpy>=1.21,<1.25
+Pillow>=9.0,<11
+tqdm
+natsort
+matplotlib
+transformers>=4.20,<5
+datasets
+pyarrow
+nltk
+tiktoken
+ftfy
+pysqlite3-binary

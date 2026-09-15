@@ -1,0 +1,232 @@
+\documentclass[11pt,a4paper,openany,twoside=false]{book}
+
+% ============================================================
+% Paquetes básicos
+% ============================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.5cm,headheight=14pt]{geometry}
+
+% ============================================================
+% Gráficos y figuras
+% ============================================================
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc,fit,backgrounds,decorations.pathreplacing,shapes.misc}
+\usepackage{tikzscale}
+
+% ============================================================
+% Tablas
+% ============================================================
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{makecell}
+
+% ============================================================
+% Matemática
+% ============================================================
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+\usepackage{bm}
+
+% ============================================================
+% Código (minted + listings)
+% ============================================================
+\usepackage{minted}
+\usepackage{listings}
+\setminted{
+    fontsize=\footnotesize,
+    linenos,
+    numbersep=8pt,
+    frame=lines,
+    framesep=2mm,
+    tabsize=4,
+    baselinestretch=1.05,
+    breaklines=false,
+    breakbytoken=false,
+    python3=true,
+    style=manni,
+    fontfamily=tt,
+    fontshape=tt,
+    fontseries=bf,
+    obeytabs=true,
+    showtabs=false,
+    tab=\rightarrowfill
+}
+% Listings como fallback (no necesita shell-escape)
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue!70!black}\bfseries,
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{red!70!black},
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    numbersep=8pt,
+    frame=single,
+    framesep=4pt,
+    tabsize=4,
+    breaklines=false,
+    showstringspaces=false,
+    extendedchars=true,
+    inputencoding=utf8,
+    literate=
+        {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+        {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+        {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {¿}{{?`}}1 {¡}{{!`}}1
+        {ü}{{\"u}}1 {Ü}{{\"U}}1
+        {α}{{$\alpha$}}1 {β}{{$\beta$}}1 {γ}{{$\gamma$}}1
+        {→}{{$\rightarrow$}}1 {←}{{$\leftarrow$}}1,
+    language=Python,
+    aboveskip=8pt,
+    belowskip=8pt
+}
+
+% ============================================================
+% Hipervínculos
+% ============================================================
+\usepackage[colorlinks=true,linkcolor=blue!60!black,urlcolor=blue!60!black,citecolor=blue!60!black,bookmarksopen=true,bookmarksnumbered=true]{hyperref}
+\usepackage{cleveref}
+\crefname{section}{Sección}{Secciones}
+\crefname{chapter}{Capítulo}{Capítulos}
+\crefname{figure}{Figura}{Figuras}
+\crefname{table}{Tabla}{Tablas}
+\crefname{listing}{Listado}{Listados}
+\crefname{equation}{Ecuación}{Ecuaciones}
+
+% ============================================================
+% Encabezados
+% ============================================================
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{TextReIDNet}}
+\fancyhead[R]{\small\textit{\nouppercase{\leftmark}}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ============================================================
+% Utilidades
+% ============================================================
+\usepackage{xcolor}
+\definecolor{codekw}{RGB}{0,0,180}
+\definecolor{codestr}{RGB}{163,21,21}
+\definecolor{codebg}{RGB}{248,248,248}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*}
+\usepackage{csquotes}
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries}
+    {\chaptertitlename~\thechapter}{20pt}{\Huge}
+\titleformat{\section}
+    {\normalfont\Large\bfseries}
+    {\thesection}{1em}{}
+\titleformat{\subsection}
+    {\normalfont\large\bfseries}
+    {\thesubsection}{1em}{}
+
+% ============================================================
+% Información del documento
+% ============================================================
+\title{\Huge\textbf{TextReIDNet}\\[0.3cm]
+\Large Diseño e implementación de un modelo\\[0.2cm]
+de reidentificación de personas\\[0.2cm]
+basado en texto\\[1cm]
+\normalfont\large Documento técnico — Proyecto \texttt{textreid-train}}
+\author{}
+\date{\today}
+
+% ============================================================
+% Comandos personalizados
+% ============================================================
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\newcommand{\dims}[1]{\textcolor{blue!70!black}{\texttt{(#1)}}}
+\newcommand{\param}[2]{\texttt{\textbf{#1}}\index{#1} \hfill \textit{#2}}
+\newcommand{\file}[1]{\texttt{\detokenize{#1}}}
+\DeclareRobustCommand{\fline}[2]{\detokenize{#1}:\textbf{#2}}
+\newcommand{\reid}{re-ID}
+\newcommand{\gru}{GRU}
+\newcommand{\dsc}{DSC}
+\newcommand{\eff}{EfficientNet-B0}
+\newcommand{\shapesym}[1]{\textcolor{blue!70!black}{\texttt{#1}}}
+\DeclareRobustCommand{\acronym}[2]{\textsc{#1}\index{#1}}
+
+\begin{document}
+
+% ============================================================
+% Portada y frontmatter
+% ============================================================
+\frontmatter
+\maketitle
+
+\begin{center}
+\textbf{\large Resumen}
+\end{center}
+
+\noindent
+Este libro documenta en profundidad el proyecto \texttt{textreid-train}, una
+implementación limpia y enfocada al entrenamiento del modelo \textbf{TextReIDNet}
+para \emph{reidentificación de personas basada en texto}. El modelo combina
+un backbone visual \eff{} con una red de lenguaje basada en \emph{BERT} +
+\gru{} bidireccional, fusionando ambas modalidades en un espacio de
+\emph{embedding} conjunto de dimensión 1024. El entrenamiento se realiza
+sobre el dataset \textbf{CUHK-PEDES}.
+
+El documento parte del paper original de Agyeman \emph{et al.} (\emph{IEEE
+Access}, 2024) -- ``Reidentificación descentralizada de personas basada
+en texto en redes multicámara'' -- cuya versión traducida al español se
+encuentra en \file{docs/paper.md}, y desciende hasta la última línea de
+cada archivo del repositorio: explica qué hace cada clase, qué forma
+tienen los tensores en cada capa, dónde se define cada parámetro de
+configuración y por qué se eligieron esos valores.
+
+Está pensado como material de referencia para quien quiera entender,
+modificar, depurar o reentrenar el modelo. No se asume experiencia
+previa con \emph{re-ID}, pero sí familiaridad básica con \emph{PyTorch}
+y \emph{deep learning}.
+
+\vspace{1cm}
+
+\tableofcontents
+\listoffigures
+\listoftables
+\listoflistings
+
+% ============================================================
+% Capítulos
+% ============================================================
+\mainmatter
+
+\input{chapters/00_prologo}
+\input{chapters/01_introduccion}
+\input{chapters/02_arquitectura_teorica}
+\input{chapters/03_sistema_descentralizado}
+\input{chapters/04_dataset}
+\input{chapters/05_configuracion}
+\input{chapters/06_visual_network}
+\input{chapters/07_language_network}
+\input{chapters/08_textreidnet}
+\input{chapters/09_losses}
+\input{chapters/10_entrenamiento}
+\input{chapters/11_evaluacion}
+\input{chapters/12_metricas}
+\input{chapters/13_apendices}
+
+% ============================================================
+% Bibliografía
+% ============================================================
+\backmatter
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

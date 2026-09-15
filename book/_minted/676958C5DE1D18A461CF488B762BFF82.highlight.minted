@@ -1,0 +1,9 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{n}{python} \PYG{n}{train}\PYG{o}{.}\PYG{n}{py} \PYGZbs{}
+    \PYG{o}{\PYGZhy{}\PYGZhy{}}\PYG{n}{dataset\PYGZus{}source} \PYG{n}{huggingface} \PYGZbs{}
+    \PYG{o}{\PYGZhy{}\PYGZhy{}}\PYG{n}{epochs} \PYG{l+m+mi}{60} \PYGZbs{}
+    \PYG{o}{\PYGZhy{}\PYGZhy{}}\PYG{n}{batch\PYGZus{}size} \PYG{l+m+mi}{8} \PYGZbs{}
+    \PYG{o}{\PYGZhy{}\PYGZhy{}}\PYG{n}{lr} \PYG{l+m+mf}{0.001} \PYGZbs{}
+    \PYG{o}{\PYGZhy{}\PYGZhy{}}\PYG{n}{seed} \PYG{l+m+mi}{3407} \PYGZbs{}
+    \PYG{o}{\PYGZhy{}\PYGZhy{}}\PYG{n}{output\PYGZus{}dir} \PYG{o}{./}\PYG{n}{data}\PYG{o}{/}\PYG{n}{checkpoints}
+\end{MintedVerbatim}

@@ -1,0 +1,20 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{weights\PYGZus{}init\PYGZus{}classifier}\PYG{p}{(}\PYG{n}{m}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Inicializa capas Linear con N(0, 0.001) y bias=0.\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{n}{classname} \PYG{o}{=} \PYG{n}{m}\PYG{o}{.}\PYG{n+nv+vm}{\PYGZus{}\PYGZus{}class\PYGZus{}\PYGZus{}}\PYG{o}{.}\PYG{n+nv+vm}{\PYGZus{}\PYGZus{}name\PYGZus{}\PYGZus{}}
+    \PYG{k}{if} \PYG{n}{classname}\PYG{o}{.}\PYG{n}{find}\PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}Linear\PYGZsq{}}\PYG{p}{)} \PYG{o}{!=} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{:}
+        \PYG{n}{init}\PYG{o}{.}\PYG{n}{normal\PYGZus{}}\PYG{p}{(}\PYG{n}{m}\PYG{o}{.}\PYG{n}{weight}\PYG{o}{.}\PYG{n}{data}\PYG{p}{,} \PYG{n}{std}\PYG{o}{=}\PYG{l+m+mf}{0.001}\PYG{p}{)}
+        \PYG{n}{init}\PYG{o}{.}\PYG{n}{constant\PYGZus{}}\PYG{p}{(}\PYG{n}{m}\PYG{o}{.}\PYG{n}{bias}\PYG{o}{.}\PYG{n}{data}\PYG{p}{,} \PYG{l+m+mf}{0.0}\PYG{p}{)}
+
+
+\PYG{k}{class}\PYG{+w}{ }\PYG{n+nc}{classifier}\PYG{p}{(}\PYG{n}{nn}\PYG{o}{.}\PYG{n}{Module}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Capa lineal simple: input\PYGZus{}dim \PYGZhy{}\PYGZgt{} output\PYGZus{}dim.\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{input\PYGZus{}dim}\PYG{p}{,} \PYG{n}{output\PYGZus{}dim}\PYG{p}{):}
+        \PYG{n+nb}{super}\PYG{p}{(}\PYG{n}{classifier}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{p}{)}\PYG{o}{.}\PYG{n+nf+fm}{\PYGZus{}\PYGZus{}init\PYGZus{}\PYGZus{}}\PYG{p}{()}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{block} \PYG{o}{=} \PYG{n}{nn}\PYG{o}{.}\PYG{n}{Linear}\PYG{p}{(}\PYG{n}{input\PYGZus{}dim}\PYG{p}{,} \PYG{n}{output\PYGZus{}dim}\PYG{p}{)}
+        \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{block}\PYG{o}{.}\PYG{n}{apply}\PYG{p}{(}\PYG{n}{weights\PYGZus{}init\PYGZus{}classifier}\PYG{p}{)}
+
+    \PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{forward}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{,} \PYG{n}{x}\PYG{p}{):}
+        \PYG{k}{return} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{block}\PYG{p}{(}\PYG{n}{x}\PYG{p}{)}
+\end{MintedVerbatim}

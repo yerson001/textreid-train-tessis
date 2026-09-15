@@ -1,0 +1,12 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{\PYGZus{}build\PYGZus{}pid\PYGZus{}mapping}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Group entries by image\PYGZus{}path (which is the identity key).\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{path\PYGZus{}to\PYGZus{}id} \PYG{o}{=} \PYG{p}{\PYGZob{}\PYGZcb{}}
+    \PYG{n}{next\PYGZus{}id} \PYG{o}{=} \PYG{l+m+mi}{0}
+    \PYG{k}{for} \PYG{n}{anno} \PYG{o+ow}{in} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{annos}\PYG{p}{:}
+        \PYG{n}{fp} \PYG{o}{=} \PYG{n}{anno}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}file\PYGZus{}path\PYGZsq{}}\PYG{p}{]}
+        \PYG{k}{if} \PYG{n}{fp} \PYG{o+ow}{not} \PYG{o+ow}{in} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{path\PYGZus{}to\PYGZus{}id}\PYG{p}{:}
+            \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{path\PYGZus{}to\PYGZus{}id}\PYG{p}{[}\PYG{n}{fp}\PYG{p}{]} \PYG{o}{=} \PYG{n}{next\PYGZus{}id}
+            \PYG{n}{next\PYGZus{}id} \PYG{o}{+=} \PYG{l+m+mi}{1}
+    \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{num\PYGZus{}persons} \PYG{o}{=} \PYG{n}{next\PYGZus{}id}
+\end{MintedVerbatim}

@@ -1,0 +1,322 @@
+% ============================================================
+% Capítulo 5 — Configuración
+% ============================================================
+\chapter{Configuración del proyecto}
+\label{cap:configuracion}
+
+Todo el comportamiento del proyecto está controlado por
+\file{config.py}. Este archivo define un diccionario de
+configuración (\texttt{DotDict}) que se pasa a cada módulo y
+permite modificar el experimento sin tocar el código.
+
+\section{La clase \texttt{DotDict}}
+
+\begin{minted}[numbers, firstnumber=14, linerange=14-17]{python}
+class DotDict(dict):
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+\end{minted}
+
+\noindent Es un \texttt{dict} con acceso por atributo:
+\texttt{configs.lr} es equivalente a \texttt{configs['lr']}.
+Esto permite usar tanto \texttt{config.feature\_length} como
+\texttt{config['feature\_length']} en el resto del código.
+
+\section{Función principal: \texttt{sys\_configuration}}
+
+Es la única función exportada. Acepta tres parámetros y devuelve
+un \texttt{DotDict}:
+
+\begin{minted}[numbers, firstnumber=20, linerange=20-31]{python}
+def sys_configuration(platform_name: str = platform.node(),
+                     dataset_name: str = "CUHK-PEDES",
+                     dataset_source: str = "huggingface",
+                     show_configs: bool = False) -> DotDict:
+    """
+    Args.:
+        platform_name: hostname of the machine
+        dataset_name:  "CUHK-PEDES" (only one supported for now)
+        dataset_source: "huggingface" or "original"
+    """
+\end{minted}
+
+\noindent Los argumentos se pueden sobreescribir desde CLI en
+\texttt{train.py} (\fline{train.py}{56}).
+
+\section{Tabla maestra de parámetros}
+
+\subsection*{Modelo de lenguaje}
+
+\begin{longtable}{p{3.5cm}p{2.5cm}p{8cm}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} & \textbf{Efecto / ubicación} \\
+\midrule
+\endhead
+\texttt{dropout\_rate}
+  & 0.30
+  & Dropout tras el embedding textual. \\
+  & & \fline{config.py}{37}, \fline{model/language_network.py}{23}. \\
+\midrule
+\texttt{num\_layers}
+  & 1
+  & Número de capas del \gru{} bidireccional. \\
+  & & \fline{config.py}{38}, \fline{model/language_network.py}{24}. \\
+\midrule
+\texttt{tokens\_length\_max}
+  & 100
+  & Longitud fija (con padding) de cada caption tokenizada. \\
+  & & \fline{config.py}{39}, \fline{datasets/bases.py}{96}. \\
+\midrule
+\texttt{feature\_length}
+  & 1024
+  & Dimensión del espacio de embedding conjunto. \\
+  & & \fline{config.py}{40}, \fline{model/textreidnet.py}{43}. \\
+\midrule
+\texttt{tokenizer\_type}
+  & 'bert'
+  & Tipo de tokenizer. Otros: 'simple\_tokenizer', 'tiktoken\_*'. \\
+  & & \fline{config.py}{41}, \fline{datasets/bases.py}{97}. \\
+\midrule
+\texttt{vocab\_size}
+  & 29\,610
+  & 29\,609 (BERT) + 1 (padding). Padding idx = 0. \\
+  & & \fline{config.py}{42}, \fline{model/language_network.py}{22}. \\
+\midrule
+\texttt{embedding\_dim}
+  & 512
+  & Dimensión del embedding textual. \\
+  & & \fline{config.py}{43}, \fline{model/language_network.py}{22}. \\
+\bottomrule
+\caption{Parámetros del modelo de lenguaje.}
+\label{tab:cfg-lang}
+\end{longtable}
+
+\subsection*{Modelo visual}
+
+\begin{longtable}{p{3.5cm}p{2.5cm}p{8cm}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} & \textbf{Efecto / ubicación} \\
+\midrule
+\endhead
+\texttt{CUHKPEDES\_image\_size}
+  & (384, 128)
+  & Tamaño \emph{declarado} en el paper. \textbf{No se usa}
+        en el dataloader actual. \\
+  & & \fline{config.py}{48}. \\
+\midrule
+\texttt{MHPV2\_image\_size}
+  & (512, 512)
+  & Tamaño del canvas en el que se pegan las imágenes. \\
+  & & \fline{config.py}{49}, \fline{datasets/bases.py}{58}. \\
+\midrule
+\texttt{MHPV2\_means}
+  & [0.355, 0.330, 0.311]
+  & Medias para \texttt{T.Normalize} en el dataloader. \\
+  & & \fline{config.py}{50}. \\
+\midrule
+\texttt{MHPV2\_stds}
+  & [0.348, 0.334, 0.330]
+  & Desviaciones para \texttt{T.Normalize}. \\
+  & & \fline{config.py}{51}. \\
+\midrule
+\texttt{CUHKPEDES\_means}
+  & [0.485, 0.456, 0.406]
+  & Medias de ImageNet (no usadas en este proyecto). \\
+  & & \fline{config.py}{52}. \\
+\midrule
+\texttt{CUHKPEDES\_stds}
+  & [0.229, 0.224, 0.225]
+  & Desviaciones de ImageNet (no usadas). \\
+  & & \fline{config.py}{53}. \\
+\bottomrule
+\caption{Parámetros del modelo visual.}
+\label{tab:cfg-vis}
+\end{longtable}
+
+\subsection*{Entrenamiento}
+
+\begin{longtable}{p{3.5cm}p{2.5cm}p{8cm}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} & \textbf{Efecto / ubicación} \\
+\midrule
+\endhead
+\texttt{epoch}
+  & 60
+  & Número de epochs total. \\
+  & & \fline{config.py}{71}, \fline{train.py}{113}. \\
+\midrule
+\texttt{adam\_alpha}
+  & 0.90
+  & $\beta_1$ de AdamW. \\
+  & & \fline{config.py}{72}, \fline{train.py}{98}. \\
+\midrule
+\texttt{adam\_beta}
+  & 0.999
+  & $\beta_2$ de AdamW. \\
+  & & \fline{config.py}{73}, \fline{train.py}{98}. \\
+\midrule
+\texttt{epoch\_decay}
+  & [20, 40]
+  & Épocas donde el LR scheduler decae el learning rate. \\
+  & & \fline{config.py}{74}, \fline{train.py}{99}. \\
+\midrule
+\texttt{lr}
+  & 0.001
+  & Learning rate inicial. \\
+  & & \fline{config.py}{75}, \fline{train.py}{98}. \\
+\midrule
+\texttt{patience}
+  & 3
+  & (No usado actualmente; sería early stopping). \\
+  & & \fline{config.py}{76}. \\
+\midrule
+\texttt{val\_dataset}
+  & 'test'
+  & Split usado durante validación. \\
+  & & \fline{config.py}{77}. \\
+\midrule
+\texttt{seed}
+  & 3407
+  & Semilla para reproducibilidad. \\
+  & & \fline{config.py}{79}, \fline{train.py}{71}. \\
+\midrule
+\texttt{batch\_size}
+  & 8 (default)
+  & Tamaño de batch (4 en Jetson). \\
+  & & \fline{config.py}{123,126,129}. \\
+\midrule
+\texttt{num\_workers}
+  & 4 (default)
+  & Hilos del DataLoader. \\
+  & & \fline{config.py}{122,125,128}. \\
+\bottomrule
+\caption{Parámetros de entrenamiento.}
+\label{tab:cfg-train}
+\end{longtable}
+
+\subsection*{Pérdidas}
+
+\begin{longtable}{p{3.5cm}p{2.5cm}p{8cm}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} & \textbf{Efecto / ubicación} \\
+\midrule
+\endhead
+\texttt{margin}
+  & 0.5
+  & Margen del triplet-style RankingLoss. \\
+  & & \fline{config.py}{86}, \fline{evaluation/ranking_loss.py}{41}. \\
+\midrule
+\texttt{ranking\_loss\_alpha}
+  & 1.0
+  & Peso $\alpha$ de la RankingLoss en la pérdida total. \\
+  & & \fline{config.py}{87}, \fline{train.py}{145}. \\
+\midrule
+\texttt{identity\_loss\_beta}
+  & 1.0
+  & Peso $\beta$ de la IdentityLoss en la pérdida total. \\
+  & & \fline{config.py}{88}, \fline{train.py}{146}. \\
+\bottomrule
+\caption{Parámetros de funciones de pérdida.}
+\label{tab:cfg-loss}
+\end{longtable}
+
+\subsection*{Paths y logging}
+
+\begin{longtable}{p{3.5cm}p{5cm}p{5.5cm}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} & \textbf{Ubicación} \\
+\midrule
+\endhead
+\texttt{train\_log\_path}
+  & \file{logs/train.log}
+  & \fline{config.py}{93} \\
+\texttt{test\_log\_path}
+  & \file{logs/test.log}
+  & \fline{config.py}{94} \\
+\texttt{model\_save\_path}
+  & \file{data/checkpoints}
+  & \fline{config.py}{96} \\
+\texttt{plot\_save\_path}
+  & \file{data/plots}
+  & \fline{config.py}{97} \\
+\texttt{dataset\_path} (HF)
+  & \file{data/CUHK-PEDES-HF}
+  & \fline{config.py}{108} \\
+\texttt{dataset\_path} (orig)
+  & \file{data/CUHK-PEDES}
+  & \fline{config.py}{112} \\
+\bottomrule
+\caption{Paths del proyecto.}
+\label{tab:cfg-paths}
+\end{longtable}
+
+\section{Override por línea de comandos}
+
+\file{train.py} permite sobreescribir los parámetros más
+importantes:
+
+\begin{minted}[basicstyle=\ttfamily\small, frame=single]{python}
+python train.py \
+    --dataset_source huggingface \
+    --epochs 60 \
+    --batch_size 8 \
+    --lr 0.001 \
+    --seed 3407 \
+    --output_dir ./data/checkpoints
+\end{minted}
+
+\noindent Cada flag corresponde a un campo del config que se
+sobreescribe justo después de llamar a \texttt{sys\_configuration}
+(\fline{train.py}{56-69}).
+
+\section{Configuración por plataforma}
+
+Hay una rama de detección automática de plataforma basada en el
+hostname (\fline{config.py}{121-129}):
+
+\begin{minted}[numbers, firstnumber=121, linerange=121-129]{python}
+if platform_name in ('PC-SIM', 'deeplearning', 'ultron', 'yrsn'):
+    configs['num_workers'] = 4
+    configs['batch_size'] = 8
+elif platform_name == 'nano':
+    configs['num_workers'] = 2
+    configs['batch_size'] = 4
+else:
+    configs['num_workers'] = 4
+    configs['batch_size'] = 8
+\end{minted}
+
+\noindent Si tu hostname es ``nano'' (Jetson Nano), el batch se
+reduce automáticamente a 4. Para cualquier otro caso, usa 8.
+
+\section{Reproducibilidad}
+
+\texttt{set\_seed}
+(\fline{utils/miscellaneous_utils.py}{18-30}) fija:
+
+\begin{itemize}
+  \item \texttt{PYTHONHASHSEED}.
+  \item \texttt{random.seed}, \texttt{numpy.random.seed}.
+  \item \texttt{torch.manual\_seed} y \texttt{torch.cuda.manual\_seed}.
+  \item \texttt{cudnn.deterministic=True}, \texttt{cudnn.benchmark=False}.
+\end{itemize}
+
+\noindent Esto garantiza resultados idénticos entre ejecuciones
+en la misma máquina. \textbf{No} garantiza resultados idénticos
+entre máquinas distintas.
+
+\section{Ejemplo de inspección}
+
+Para imprimir la configuración completa desde un script:
+
+\begin{minted}[basicstyle=\ttfamily\small, frame=single]{python}
+from config import sys_configuration
+cfg = sys_configuration(dataset_source='huggingface')
+print(cfg.feature_length)    # 1024
+print(cfg.batch_size)        # 8
+print(cfg.vocab_size)        # 29610
+\end{minted}
+
+\noindent Esta es la mejor forma de verificar que la
+configuración es la esperada antes de entrenar.

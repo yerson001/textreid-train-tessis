@@ -1,0 +1,58 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{main}\PYG{p}{():}
+    \PYG{n}{args} \PYG{o}{=} \PYG{n}{parse\PYGZus{}args}\PYG{p}{()}
+
+    \PYG{n}{config} \PYG{o}{=} \PYG{n}{sys\PYGZus{}configuration}\PYG{p}{(}
+        \PYG{n}{dataset\PYGZus{}name}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}CUHK\PYGZhy{}PEDES\PYGZdq{}}\PYG{p}{,}
+        \PYG{n}{dataset\PYGZus{}source}\PYG{o}{=}\PYG{n}{args}\PYG{o}{.}\PYG{n}{dataset\PYGZus{}source}
+    \PYG{p}{)}
+    \PYG{n}{config}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}batch\PYGZus{}size\PYGZsq{}}\PYG{p}{]} \PYG{o}{=} \PYG{n}{args}\PYG{o}{.}\PYG{n}{batch\PYGZus{}size}
+    \PYG{n}{config}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}device\PYGZsq{}}\PYG{p}{]} \PYG{o}{=} \PYG{n}{args}\PYG{o}{.}\PYG{n}{device}
+    \PYG{n}{config}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}model\PYGZus{}testing\PYGZus{}data\PYGZus{}split\PYGZsq{}}\PYG{p}{]} \PYG{o}{=} \PYG{n}{args}\PYG{o}{.}\PYG{n}{split}  \PYG{c+c1}{\PYGZsh{} \PYGZsq{}test\PYGZsq{} o \PYGZsq{}val\PYGZsq{}}
+
+    \PYG{c+c1}{\PYGZsh{} Construir dataloaders (devuelve img\PYGZus{}loader y txt\PYGZus{}loader)}
+    \PYG{n}{\PYGZus{}}\PYG{p}{,} \PYG{n}{img\PYGZus{}loader}\PYG{p}{,} \PYG{n}{txt\PYGZus{}loader}\PYG{p}{,} \PYG{n}{\PYGZus{}} \PYG{o}{=} \PYG{n}{build\PYGZus{}cuhkpedes\PYGZus{}dataloader}\PYG{p}{(}\PYG{n}{config}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Construir modelo y cargar checkpoint}
+    \PYG{n}{model} \PYG{o}{=} \PYG{n}{TextReIDNet}\PYG{p}{(}\PYG{n}{config}\PYG{p}{)}\PYG{o}{.}\PYG{n}{to}\PYG{p}{(}\PYG{n}{config}\PYG{o}{.}\PYG{n}{device}\PYG{p}{)}
+    \PYG{n}{ckpt} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{load}\PYG{p}{(}\PYG{n}{args}\PYG{o}{.}\PYG{n}{checkpoint}\PYG{p}{,} \PYG{n}{map\PYGZus{}location}\PYG{o}{=}\PYG{n}{config}\PYG{o}{.}\PYG{n}{device}\PYG{p}{)}
+    \PYG{k}{if} \PYG{l+s+s1}{\PYGZsq{}model\PYGZus{}state\PYGZus{}dict\PYGZsq{}} \PYG{o+ow}{in} \PYG{n}{ckpt}\PYG{p}{:}
+        \PYG{n}{model}\PYG{o}{.}\PYG{n}{load\PYGZus{}state\PYGZus{}dict}\PYG{p}{(}\PYG{n}{ckpt}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}model\PYGZus{}state\PYGZus{}dict\PYGZsq{}}\PYG{p}{])}
+    \PYG{k}{else}\PYG{p}{:}
+        \PYG{n}{model}\PYG{o}{.}\PYG{n}{load\PYGZus{}state\PYGZus{}dict}\PYG{p}{(}\PYG{n}{ckpt}\PYG{p}{)}  \PYG{c+c1}{\PYGZsh{} compatibilidad}
+
+    \PYG{c+c1}{\PYGZsh{} PASO 1: extraer features de imágenes}
+    \PYG{n}{img\PYGZus{}feats}\PYG{p}{,} \PYG{n}{img\PYGZus{}pids}\PYG{p}{,} \PYG{n}{img\PYGZus{}paths} \PYG{o}{=} \PYG{n}{extract\PYGZus{}image\PYGZus{}features}\PYG{p}{(}
+        \PYG{n}{model}\PYG{p}{,} \PYG{n}{img\PYGZus{}loader}\PYG{p}{,} \PYG{n}{config}\PYG{o}{.}\PYG{n}{device}
+    \PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} PASO 2: extraer features de textos}
+    \PYG{n}{txt\PYGZus{}feats}\PYG{p}{,} \PYG{n}{txt\PYGZus{}pids} \PYG{o}{=} \PYG{n}{extract\PYGZus{}text\PYGZus{}features}\PYG{p}{(}
+        \PYG{n}{model}\PYG{p}{,} \PYG{n}{txt\PYGZus{}loader}\PYG{p}{,} \PYG{n}{config}\PYG{o}{.}\PYG{n}{device}
+    \PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} PASO 3: matriz de similitud coseno}
+    \PYG{n}{similarity} \PYG{o}{=} \PYG{n}{calculate\PYGZus{}similarity}\PYG{p}{(}\PYG{n}{img\PYGZus{}feats}\PYG{p}{,} \PYG{n}{txt\PYGZus{}feats}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} PASO 4: calcular CMC y mAP}
+    \PYG{n}{img\PYGZus{}pids\PYGZus{}t} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{tensor}\PYG{p}{(}\PYG{n}{img\PYGZus{}pids}\PYG{p}{)}
+    \PYG{n}{txt\PYGZus{}pids\PYGZus{}t} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{tensor}\PYG{p}{(}\PYG{n}{txt\PYGZus{}pids}\PYG{p}{)}
+    \PYG{n}{cmc}\PYG{p}{,} \PYG{n}{mAP} \PYG{o}{=} \PYG{n}{evaluate}\PYG{p}{(}\PYG{n}{similarity}\PYG{p}{,} \PYG{n}{txt\PYGZus{}pids\PYGZus{}t}\PYG{p}{,} \PYG{n}{img\PYGZus{}pids\PYGZus{}t}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} PASO 5: imprimir resultados}
+    \PYG{n}{top1}  \PYG{o}{=} \PYG{n}{cmc}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{l+m+mi}{100}
+    \PYG{n}{top5}  \PYG{o}{=} \PYG{n}{cmc}\PYG{p}{[}\PYG{l+m+mi}{4}\PYG{p}{]} \PYG{o}{*} \PYG{l+m+mi}{100} \PYG{k}{if} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{cmc}\PYG{p}{)} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{4} \PYG{k}{else} \PYG{l+m+mi}{0}
+    \PYG{n}{top10} \PYG{o}{=} \PYG{n}{cmc}\PYG{p}{[}\PYG{l+m+mi}{9}\PYG{p}{]} \PYG{o}{*} \PYG{l+m+mi}{100} \PYG{k}{if} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{cmc}\PYG{p}{)} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{9} \PYG{k}{else} \PYG{l+m+mi}{0}
+
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Top\PYGZhy{}1:  }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{top1}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Top\PYGZhy{}5:  }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{top5}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  Top\PYGZhy{}10: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{top10}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+    \PYG{n+nb}{print}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}  mAP:    }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{mAP}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Guardar en log}
+    \PYG{n}{logger} \PYG{o}{=} \PYG{n}{setup\PYGZus{}logger}\PYG{p}{(}\PYG{n}{name}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}eval\PYGZus{}logger\PYGZsq{}}\PYG{p}{,}
+                           \PYG{n}{log\PYGZus{}file\PYGZus{}path}\PYG{o}{=}\PYG{n}{config}\PYG{o}{.}\PYG{n}{test\PYGZus{}log\PYGZus{}path}\PYG{p}{,}
+                           \PYG{n}{write\PYGZus{}mode}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}append\PYGZsq{}}\PYG{p}{)}
+    \PYG{n}{logger}\PYG{o}{.}\PYG{n}{info}\PYG{p}{(}\PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Top\PYGZhy{}1: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{top1}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{} | Top\PYGZhy{}5: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{top5}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{} | \PYGZdq{}}
+                \PYG{l+s+sa}{f}\PYG{l+s+s2}{\PYGZdq{}Top\PYGZhy{}10: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{top10}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{} | mAP: }\PYG{l+s+si}{\PYGZob{}}\PYG{n}{mAP}\PYG{o}{*}\PYG{l+m+mi}{100}\PYG{l+s+si}{:}\PYG{l+s+s2}{.2f}\PYG{l+s+si}{\PYGZcb{}}\PYG{l+s+s2}{\PYGZpc{}\PYGZdq{}}\PYG{p}{)}
+\end{MintedVerbatim}

@@ -1,0 +1,68 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{calculate\PYGZus{}ap}\PYG{p}{(}\PYG{n}{similarity}\PYG{p}{,} \PYG{n}{label\PYGZus{}query}\PYG{p}{,} \PYG{n}{label\PYGZus{}gallery}\PYG{p}{):}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}}
+\PYG{l+s+sd}{    Args.:}
+\PYG{l+s+sd}{        similarity:     vector 1\PYGZhy{}D con similitud a cada imagen de la gallery}
+\PYG{l+s+sd}{        label\PYGZus{}query:    pid (int) del query}
+\PYG{l+s+sd}{        label\PYGZus{}gallery:  vector 1\PYGZhy{}D con pids de la gallery (mismo orden que similarity)}
+\PYG{l+s+sd}{    Returns: (ap, cmc) o (None, None) si no hay positivos}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+
+    \PYG{c+c1}{\PYGZsh{} Ordenar índices por similitud DESCENDENTE (mejor primero)}
+    \PYG{c+c1}{\PYGZsh{} np.argsort devuelve ascending; [::\PYGZhy{}1] invierte el orden}
+    \PYG{c+c1}{\PYGZsh{} np es numpy: import numpy as np}
+    \PYG{n}{index} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{argsort}\PYG{p}{(}\PYG{n}{similarity}\PYG{p}{)[::}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{]}
+
+    \PYG{c+c1}{\PYGZsh{} good\PYGZus{}index: posiciones en la gallery donde el pid == label\PYGZus{}query}
+    \PYG{c+c1}{\PYGZsh{} np.argwhere devuelve índices donde se cumple la condición}
+    \PYG{n}{good\PYGZus{}index} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{argwhere}\PYG{p}{(}\PYG{n}{label\PYGZus{}gallery} \PYG{o}{==} \PYG{n}{label\PYGZus{}query}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} cmc: vector de ceros del mismo tamaño que el ranking}
+    \PYG{c+c1}{\PYGZsh{} Lo llenaremos con 1 desde la posición del primer match}
+    \PYG{n}{cmc} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{zeros}\PYG{p}{(}\PYG{n}{index}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Máscara booleana: True donde index[i] está en good\PYGZus{}index}
+    \PYG{c+c1}{\PYGZsh{} np.in1d chequea pertenencia a un conjunto, eficiente}
+    \PYG{n}{mask} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{in1d}\PYG{p}{(}\PYG{n}{index}\PYG{p}{,} \PYG{n}{good\PYGZus{}index}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Posiciones (en el ranking) donde hay match}
+    \PYG{c+c1}{\PYGZsh{} precision\PYGZus{}result[i] = posición en el ranking del i\PYGZhy{}ésimo match}
+    \PYG{n}{precision\PYGZus{}result} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{argwhere}\PYG{p}{(}\PYG{n}{mask} \PYG{o}{==} \PYG{k+kc}{True}\PYG{p}{)}
+    \PYG{n}{precision\PYGZus{}result} \PYG{o}{=} \PYG{n}{precision\PYGZus{}result}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}
+        \PYG{n}{precision\PYGZus{}result}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{])}
+
+    \PYG{c+c1}{\PYGZsh{} Si hay al menos un positivo:}
+    \PYG{k}{if} \PYG{n}{precision\PYGZus{}result}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{:}
+
+        \PYG{c+c1}{\PYGZsh{} Marcar con 1 desde el primer match en adelante}
+        \PYG{c+c1}{\PYGZsh{} cmc[k] = 1 significa \PYGZdq{}el match aparece en posición \PYGZlt{}= k\PYGZdq{}}
+        \PYG{n}{cmc}\PYG{p}{[}\PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{precision\PYGZus{}result}\PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]):]} \PYG{o}{=} \PYG{l+m+mi}{1}
+
+        \PYG{c+c1}{\PYGZsh{} d\PYGZus{}recall: cuánto aumenta el recall por cada positivo}
+        \PYG{c+c1}{\PYGZsh{} 1/N donde N = total de positivos en la gallery}
+        \PYG{n}{d\PYGZus{}recall} \PYG{o}{=} \PYG{l+m+mf}{1.0} \PYG{o}{/} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{precision\PYGZus{}result}\PYG{p}{)}
+
+        \PYG{c+c1}{\PYGZsh{} Acumular AP con regla del trapecio}
+        \PYG{n}{ap} \PYG{o}{=} \PYG{l+m+mi}{0}
+        \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{precision\PYGZus{}result}\PYG{p}{)):}
+
+            \PYG{c+c1}{\PYGZsh{} Precisión en la posición del i\PYGZhy{}ésimo match}
+            \PYG{c+c1}{\PYGZsh{} = (matches hasta aquí) / (rank del match)}
+            \PYG{n}{precision} \PYG{o}{=} \PYG{p}{(}\PYG{n}{i} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)} \PYG{o}{*} \PYG{l+m+mf}{1.0} \PYG{o}{/} \PYG{p}{(}\PYG{n}{precision\PYGZus{}result}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{)}
+
+            \PYG{c+c1}{\PYGZsh{} Precisión del match anterior (para el trapecio)}
+            \PYG{k}{if} \PYG{n}{precision\PYGZus{}result}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]} \PYG{o}{!=} \PYG{l+m+mi}{0}\PYG{p}{:}
+                \PYG{n}{old\PYGZus{}precision} \PYG{o}{=} \PYG{n}{i} \PYG{o}{*} \PYG{l+m+mf}{1.0} \PYG{o}{/} \PYG{n}{precision\PYGZus{}result}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}
+            \PYG{k}{else}\PYG{p}{:}
+                \PYG{c+c1}{\PYGZsh{} Caso especial: primer match en posición 0}
+                \PYG{n}{old\PYGZus{}precision} \PYG{o}{=} \PYG{l+m+mf}{1.0}
+
+            \PYG{c+c1}{\PYGZsh{} Área del trapecio entre (old\PYGZus{}prec, precision) con altura d\PYGZus{}recall}
+            \PYG{n}{ap} \PYG{o}{+=} \PYG{n}{d\PYGZus{}recall} \PYG{o}{*} \PYG{p}{(}\PYG{n}{old\PYGZus{}precision} \PYG{o}{+} \PYG{n}{precision}\PYG{p}{)} \PYG{o}{/} \PYG{l+m+mi}{2}
+
+        \PYG{k}{return} \PYG{n}{ap}\PYG{p}{,} \PYG{n}{cmc}
+
+    \PYG{k}{else}\PYG{p}{:}
+        \PYG{c+c1}{\PYGZsh{} No hay positivos para esta query (no debería pasar)}
+        \PYG{k}{return} \PYG{k+kc}{None}\PYG{p}{,} \PYG{k+kc}{None}
+\end{MintedVerbatim}

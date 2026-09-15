@@ -1,0 +1,270 @@
+% ============================================================
+% Capítulo 11 — Evaluación: conceptos + código
+% ============================================================
+\chapter{Evaluación: extracción de features y métricas}
+\label{cap:evaluacion}
+
+Este capítulo explica los conceptos de inferencia y muestra el
+código de evaluación. Para la explicación detallada de las
+métricas (Top-k, mAP, AP), ver el \cref{cap:metricas}.
+
+\section{¿Qué es la inferencia (evaluación)?}
+
+Una vez entrenado el modelo, queremos medir su rendimiento. El
+proceso tiene tres pasos:
+
+\begin{enumerate}
+  \item \textbf{Extraer embeddings} de todas las imágenes y
+        textos del split test.
+  \item \textbf{Computar la matriz de similitud coseno} entre
+        imágenes y textos.
+  \item \textbf{Calcular métricas} (Top-k, mAP) usando los pids.
+\end{enumerate}
+
+\noindent\textbf{Diferencia con entrenamiento}:
+\begin{itemize}
+  \item En entrenamiento se hace forward + backward.
+  \item En inferencia sólo forward (sin gradientes).
+\end{itemize}
+
+\section{¿Por qué \texttt{@torch.no\_grad()}?}
+
+\texttt{@torch.no\_grad()} es un decorator que desactiva el
+cálculo de gradientes. Beneficios:
+
+\begin{itemize}
+  \item \textbf{Menor memoria}: no se almacenan gradientes.
+  \item \textbf{Más rápido}: ahorra cómputo.
+  \item \textbf{Previene errores}: garantiza que no se
+        modifiquen parámetros accidentalmente.
+\end{itemize}
+
+\section{¿Qué es \texttt{model.eval()}?}
+
+\texttt{model.eval()} cambia el modo del modelo:
+
+\begin{itemize}
+  \item Desactiva \texttt{Dropout} (no se eliminan activaciones).
+  \item Usa estadísticas \emph{acumuladas} en \texttt{BatchNorm}
+        en lugar de las del batch.
+  \item Afecta a capas como \texttt{Dropout}, \texttt{BatchNorm}.
+\end{itemize}
+
+\noindent Para inferir SIEMPRE se debe llamar
+\texttt{model.eval()} antes.
+
+\section{Galería vs query: convención de este proyecto}
+
+En este proyecto:
+
+\begin{itemize}
+  \item \textbf{Query} = texto (descripción de la persona).
+  \item \textbf{Gallery} = imágenes.
+\end{itemize}
+
+\noindent Para cada query se buscan imágenes similares en la
+gallery. La métrica \textbf{Top-k} indica cuántas queries
+tienen la imagen correcta en el top-k.
+
+\section{Código: extracción de features de imágenes}
+
+\begin{minted}[language=Python, numbers, firstnumber=42, linerange=42-62]{python}
+@torch.no_grad()
+def extract_image_features(model, img_loader, device):
+    """Extrae embeddings visuales para todas las imágenes del loader."""
+
+    # Modo evaluación (desactiva dropout, etc.)
+    model.eval()
+
+    all_features = []
+    all_pids = []
+    all_paths = []
+
+    for batch in tqdm(img_loader, desc='Extracting image features'):
+        if isinstance(batch, (list, tuple)):
+            imgs, pids, paths = batch[0], batch[1], batch[2]
+        else:
+            imgs, pids, paths = batch
+
+        # GPU
+        imgs = imgs.to(device)
+
+        # Forward solo en la rama visual
+        # image_embedding retorna (B, 1024, 1)
+        feats = model.image_embedding(imgs)
+
+        # Aplanar y mover a CPU
+        feats = feats.view(feats.size(0), -1).cpu()
+
+        all_features.append(feats)
+        all_pids.extend(pids.tolist() if torch.is_tensor(pids) else list(pids))
+        all_paths.extend(paths if isinstance(paths, list) else [paths])
+
+    # Concatenar todos los batches
+    return torch.cat(all_features, 0), all_pids, all_paths
+\end{minted}
+
+\section{Código: extracción de features de textos}
+
+\begin{minted}[language=Python, numbers, firstnumber=65, linerange=65-85]{python}
+@torch.no_grad()
+def extract_text_features(model, txt_loader, device):
+    """Extrae embeddings textuales."""
+
+    model.eval()
+
+    all_features = []
+    all_pids = []
+
+    for batch in tqdm(txt_loader, desc='Extracting text features'):
+        if isinstance(batch, (list, tuple)):
+            pids, token_ids, token_lengths = batch[0], batch[1], batch[2]
+        else:
+            pids, token_ids, token_lengths = batch
+
+        token_ids = token_ids.to(device)
+        token_lengths = token_lengths.to(device)
+
+        # Forward solo en la rama textual
+        feats = model.text_embedding(token_ids, token_lengths)
+        feats = feats.view(feats.size(0), -1).cpu()
+
+        all_features.append(feats)
+        all_pids.extend(pids.tolist() if torch.is_tensor(pids) else list(pids))
+
+    return torch.cat(all_features, 0), all_pids
+\end{minted}
+
+\section{Código: similitud coseno}
+
+\begin{minted}[language=Python, numbers, firstnumber=9, linerange=9-17]{python}
+def calculate_similarity(image_feature_local, text_feature_local):
+    """image: (N_img, 1024), text: (N_txt, 1024)
+       returns: (N_img, N_txt) numpy array de similitudes coseno"""
+
+    # Aplanar por si tienen más dims
+    image_feature_local = image_feature_local.view(image_feature_local.size(0), -1)
+    text_feature_local = text_feature_local.view(text_feature_local.size(0), -1)
+
+    # Normalizar L2 (cada vector a norma 1)
+    image_feature_local = image_feature_local / \
+        image_feature_local.norm(dim=1, keepdim=True)
+    text_feature_local = text_feature_local / \
+        text_feature_local.norm(dim=1, keepdim=True)
+
+    # Producto matricial: S[i,j] = cos(img_i, txt_j)
+    similarity = torch.mm(image_feature_local, text_feature_local.t())
+
+    # Devolver como numpy (requerido por calculate_ap)
+    return similarity.cpu().numpy()
+\end{minted}
+
+\section{Código: pipeline completo de evaluación}
+
+\begin{minted}[language=Python, numbers, firstnumber=89, linerange=89-153]{python}
+def main():
+    args = parse_args()
+
+    config = sys_configuration(
+        dataset_name="CUHK-PEDES",
+        dataset_source=args.dataset_source
+    )
+    config['batch_size'] = args.batch_size
+    config['device'] = args.device
+    config['model_testing_data_split'] = args.split  # 'test' o 'val'
+
+    # Construir dataloaders (devuelve img_loader y txt_loader)
+    _, img_loader, txt_loader, _ = build_cuhkpedes_dataloader(config)
+
+    # Construir modelo y cargar checkpoint
+    model = TextReIDNet(config).to(config.device)
+    ckpt = torch.load(args.checkpoint, map_location=config.device)
+    if 'model_state_dict' in ckpt:
+        model.load_state_dict(ckpt['model_state_dict'])
+    else:
+        model.load_state_dict(ckpt)  # compatibilidad
+
+    # PASO 1: extraer features de imágenes
+    img_feats, img_pids, img_paths = extract_image_features(
+        model, img_loader, config.device
+    )
+
+    # PASO 2: extraer features de textos
+    txt_feats, txt_pids = extract_text_features(
+        model, txt_loader, config.device
+    )
+
+    # PASO 3: matriz de similitud coseno
+    similarity = calculate_similarity(img_feats, txt_feats)
+
+    # PASO 4: calcular CMC y mAP
+    img_pids_t = torch.tensor(img_pids)
+    txt_pids_t = torch.tensor(txt_pids)
+    cmc, mAP = evaluate(similarity, txt_pids_t, img_pids_t)
+
+    # PASO 5: imprimir resultados
+    top1  = cmc[0] * 100
+    top5  = cmc[4] * 100 if len(cmc) > 4 else 0
+    top10 = cmc[9] * 100 if len(cmc) > 9 else 0
+
+    print(f"  Top-1:  {top1:.2f}%")
+    print(f"  Top-5:  {top5:.2f}%")
+    print(f"  Top-10: {top10:.2f}%")
+    print(f"  mAP:    {mAP*100:.2f}%")
+
+    # Guardar en log
+    logger = setup_logger(name='eval_logger',
+                           log_file_path=config.test_log_path,
+                           write_mode='append')
+    logger.info(f"Top-1: {top1:.2f}% | Top-5: {top5:.2f}% | "
+                f"Top-10: {top10:.2f}% | mAP: {mAP*100:.2f}%")
+\end{minted}
+
+\section{Uso desde la terminal}
+
+\begin{minted}[language=bash, basicstyle=\ttfamily\small, frame=single]{python}
+# Evaluar en el split test
+.venv/bin/python evaluate.py \
+    --checkpoint data/checkpoints/TextReIDNet_latest.pth.tar \
+    --dataset_source huggingface \
+    --split test
+
+# Cambiar batch size
+.venv/bin/python evaluate.py \
+    --checkpoint data/checkpoints/TextReIDNet_latest.pth.tar \
+    --batch_size 64
+
+# Forzar CPU (lento)
+.venv/bin/python evaluate.py \
+    --checkpoint data/checkpoints/TextReIDNet_latest.pth.tar \
+    --device cpu
+\end{minted}
+
+\section{Resultados típicos}
+
+\begin{table}[H]
+\centering
+\caption{Resultados esperados según el README.}
+\label{tab:resultados-tipicos-eval}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Setup} & \textbf{Top-1} & \textbf{Top-5} & \textbf{Top-10} & \textbf{mAP} \\
+\midrule
+Sin entrenar (random) & \textasciitilde 0.02\% & 0.05\% & 0.10\% & 0.10\% \\
+HF (128×128) 50 batches & 0.02\% & 0.08\% & 0.17\% & 0.10\% \\
+HF entrenado completo & 45--52\% & \textasciitilde 70\% & \textasciitilde 80\% & \textasciitilde 40\% \\
+Original paper & 54.02\% & 75.51\% & 85.28\% & \textasciitilde 50\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Limitaciones}
+
+\begin{enumerate}
+  \item \textbf{Sin gallery augmentation}: cada imagen se evalúa
+        una sola vez.
+  \item \textbf{Sin query expansion}: no se re-rankea usando
+        los top-k.
+  \item \textbf{Sin análisis por longitud de caption}.
+  \item \textbf{Sin visualización} de aciertos/fallos.
+\end{enumerate}

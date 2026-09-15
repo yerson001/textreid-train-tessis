@@ -1,0 +1,11 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k}{if} \PYG{n}{platform\PYGZus{}name} \PYG{o+ow}{in} \PYG{p}{(}\PYG{l+s+s1}{\PYGZsq{}PC\PYGZhy{}SIM\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}deeplearning\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}ultron\PYGZsq{}}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}yrsn\PYGZsq{}}\PYG{p}{):}
+    \PYG{n}{configs}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}num\PYGZus{}workers\PYGZsq{}}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{4}
+    \PYG{n}{configs}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}batch\PYGZus{}size\PYGZsq{}}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{8}
+\PYG{k}{elif} \PYG{n}{platform\PYGZus{}name} \PYG{o}{==} \PYG{l+s+s1}{\PYGZsq{}nano\PYGZsq{}}\PYG{p}{:}
+    \PYG{n}{configs}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}num\PYGZus{}workers\PYGZsq{}}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{2}
+    \PYG{n}{configs}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}batch\PYGZus{}size\PYGZsq{}}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{4}
+\PYG{k}{else}\PYG{p}{:}
+    \PYG{n}{configs}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}num\PYGZus{}workers\PYGZsq{}}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{4}
+    \PYG{n}{configs}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}batch\PYGZus{}size\PYGZsq{}}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{8}
+\end{MintedVerbatim}

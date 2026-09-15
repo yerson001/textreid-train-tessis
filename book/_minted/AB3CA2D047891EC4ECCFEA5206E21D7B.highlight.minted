@@ -1,0 +1,7 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k+kn}{from}\PYG{+w}{ }\PYG{n+nn}{config}\PYG{+w}{ }\PYG{k+kn}{import} \PYG{n}{sys\PYGZus{}configuration}
+\PYG{n}{cfg} \PYG{o}{=} \PYG{n}{sys\PYGZus{}configuration}\PYG{p}{(}\PYG{n}{dataset\PYGZus{}source}\PYG{o}{=}\PYG{l+s+s1}{\PYGZsq{}huggingface\PYGZsq{}}\PYG{p}{)}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{n}{cfg}\PYG{o}{.}\PYG{n}{feature\PYGZus{}length}\PYG{p}{)}    \PYG{c+c1}{\PYGZsh{} 1024}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{n}{cfg}\PYG{o}{.}\PYG{n}{batch\PYGZus{}size}\PYG{p}{)}        \PYG{c+c1}{\PYGZsh{} 8}
+\PYG{n+nb}{print}\PYG{p}{(}\PYG{n}{cfg}\PYG{o}{.}\PYG{n}{vocab\PYGZus{}size}\PYG{p}{)}        \PYG{c+c1}{\PYGZsh{} 29610}
+\end{MintedVerbatim}

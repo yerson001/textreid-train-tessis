@@ -1,0 +1,323 @@
+% ============================================================
+% Capítulo 2 — Arquitectura teórica U-TextReIDNet
+% ============================================================
+\chapter{U-TextReIDNet: arquitectura teórica}
+\label{cap:arquitectura-teorica}
+
+Este capítulo desglosa la arquitectura completa del modelo
+U-TextReIDNet tal como se describe en \file{docs/paper.md}
+(§\textsc{Iii}-A, líneas 146--178). Aunque el repositorio
+\texttt{textreid-train} implementa solo la parte de identificación
+(\emph{TextReIDNet}), entender la versión unificada ayuda a
+comprender las elecciones de diseño.
+
+\section{Formulación del problema}
+
+Dado un fotograma de vídeo con $n$ personas distintas
+$\mathbf{V} \in \mathbb{R}^{H \times W \times 3}$ y una descripción
+textual $\mathbf{T}$ en lenguaje natural, los objetivos son:
+
+\begin{enumerate}
+  \item \textbf{Detectar y segmentar} las $n$ instancias humanas en
+        $\mathbf{V}$, produciendo una galería
+        $\mathbf{I} = \{\mathbf{I}_1, \ldots, \mathbf{I}_n\}$.
+        Si $n = 0$, la galería está vacía.
+  \item \textbf{Identificar} la imagen $\mathbf{I}^* \in \mathbf{I}$
+        que mejor se ajusta a $\mathbf{T}$ mediante una función de
+        coincidencia multimodal $\mathcal{M}$.
+\end{enumerate}
+
+La función $\mathcal{M}$ usa las \emph{incrustaciones} (embeddings)
+visuales y textuales:
+
+\begin{align}
+  \mathbf{I}' &= F_i(\mathbf{I}) && \text{embedding visual} \\
+  \mathbf{T}' &= F_t(\mathbf{T}) && \text{embedding textual}
+\end{align}
+
+\noindent y calcula su similitud con la métrica del coseno:
+
+\begin{equation}
+  \text{sim}(\mathbf{I}', \mathbf{T}') =
+  \frac{\mathbf{I}' \cdot \mathbf{T}'}{\|\mathbf{I}'\|\,\|\mathbf{T}'\|}
+  \label{eq:cosine}
+\end{equation}
+
+\noindent El resultado óptimo es la imagen que maximiza esa
+similitud.
+
+\section{Componentes principales}
+
+U-TextReIDNet se compone de tres bloques:
+
+\begin{enumerate}
+  \item \textbf{Red visual}: \emph{backbone} EfficientNet-B0 +
+        capa de convolución separable en profundidad.
+  \item \textbf{Red de lenguaje}: BERT + BiGRU bidireccional.
+  \item \textbf{Componente de coincidencia}: espacio de embedding
+        conjunto + pérdidas.
+\end{enumerate}
+
+\subsection{Red visual}
+
+\paragraph{Detector R-MHParsNet (no implementado en este proyecto).}
+
+R-MHParsNet es una FPN (Feature Pyramid Network) basada en
+EfficientNet-B0, con cabezas de segmentación para generar máscaras
+de instancia humana. Genera los bounding boxes
+$\{(x_1,y_1,x_2,y_2)\}_{i=1}^{n}$ que delimitan cada persona
+detectada. Tiene 6,49M parámetros (un 79,9\% más pequeño que su
+predecesor MHParsNet).
+
+\paragraph{Generador de embedding visual (sí implementado).}
+
+Para cada persona detectada, recortada como
+$\mathbf{I} \in \mathbb{R}^{384 \times 128 \times 3}$:
+
+\begin{enumerate}
+  \item Se redimensiona a $\mathbb{R}^{3 \times 384 \times 128}$
+        (HxW o WxH según convención; el paper dice 384 alto × 128
+        ancho).
+  \item Pasa por EfficientNet-B0 y se extrae la salida de la
+        \textbf{etapa 9} (la última): un tensor de
+        $\mathbb{R}^{1280 \times 12 \times 4}$. Los 1280 canales
+        son la profundidad de features; $12 \times 4$ son las
+        dimensiones espaciales (es decir, $384 / 32 = 12$ y
+        $128 / 32 = 4$).
+  \item Una capa de convolución separable en profundidad
+        (\dsc{}) con 1024 filtros $3 \times 3$ reduce a
+        $\mathbb{R}^{1024 \times 12 \times 4}$.
+\end{enumerate}
+
+\noindent\textbf{Nota técnica:} en este proyecto las imágenes
+entran a $512 \times 512$ (ver \fline{datasets/bases.py}{43} y
+\cref{cap:dataset}), no a $384 \times 128$. Eso cambia las
+dimensiones espaciales en el resto del pipeline. Se conserva la
+misma profundidad de canales.
+
+\subsection{Red de lenguaje}
+
+El componente de lenguaje procesa la descripción textual
+$\mathbf{T}$:
+
+\begin{enumerate}
+  \item \textbf{BERT} tokeniza y recorta/padea a una longitud
+        fija de 100 tokens: $(z_{+1}, \ldots, z_{+100})$.
+        El tokenizer es \texttt{bert-base-uncased}.
+  \item Una \textbf{capa de embedding} de 512 dimensiones convierte
+        cada token en un vector denso:
+        $(\mathbf{e}_1, \ldots, \mathbf{e}_{100}) \in
+        \mathbb{R}^{100 \times 512}$.
+  \item Una \textbf{GRU bidireccional} con 1024 unidades ocultas
+        procesa la secuencia y produce:
+        \begin{equation}
+          \mathbf{T}' = (\overrightarrow{\text{GRU}} +
+                          \overleftarrow{\text{GRU}}) / 2
+          \in \mathbb{R}^{1024 \times 100 \times 1}
+          \label{eq:bigru}
+        \end{equation}
+        La suma promedio de las direcciones hacia adelante y hacia
+        atrás captura el contexto en ambos sentidos.
+\end{enumerate}
+
+\subsection{Componente de coincidencia de embedding conjunto}
+
+Las dos modalidades se proyectan a un \textbf{espacio conjunto} de
+dimensión 1024:
+
+\begin{itemize}
+  \item $\mathbf{I}' \in \mathbb{R}^{1024 \times 12 \times 4}$
+        (visual).
+  \item $\mathbf{T}' \in \mathbb{R}^{1024 \times 100 \times 1}$
+        (textual).
+\end{itemize}
+
+Para optimizar el \emph{matching} se usan dos pérdidas:
+
+\begin{itemize}
+  \item \textbf{Pérdida de identidad} ($\mathcal{L}_{\text{ID}}$):
+        cross-entropy que refuerza que cada persona tenga una
+        representación única en el espacio.
+  \item \textbf{Pérdida de ranking/clasificación}
+        ($\mathcal{L}_{\text{rank}}$): basada en triplet loss,
+        garantiza que las coincidencias correctas obtengan
+        puntuaciones más altas que las incorrectas.
+\end{itemize}
+
+\noindent La suma ponderada es la pérdida total:
+\begin{equation}
+  \mathcal{L} = \alpha \cdot \mathcal{L}_{\text{rank}}
+              + \beta  \cdot \mathcal{L}_{\text{ID}}
+\end{equation}
+
+\noindent En este proyecto $\alpha = \beta = 1.0$
+(\fline{config.py}{87-88}).
+
+\section{Diagrama de bloques}
+
+\begin{figure}[H]
+\centering
+\input{figures/arquitectura_textreidnet.tikz}
+\caption{Arquitectura de U-TextReIDNet. Las cajas con relleno gris
+son las que este proyecto implementa; las cajas con relleno claro
+son las del paper que no están en el código (R-MHParsNet y sistema
+distribuido).}
+\label{fig:arquitectura}
+\end{figure}
+
+\section{Dimensiones en cada etapa: tabla resumen}
+
+\begin{table}[H]
+\centering
+\caption{Dimensiones de los tensores en cada etapa del modelo.
+\textit{B} denota el tamaño de batch. Las columnas ``Etapa paper''
+y ``Etapa proyecto'' difieren únicamente en la resolución espacial
+de entrada.}
+\label{tab:dimensiones}
+\small
+\begin{tabular}{lrll}
+\toprule
+\textbf{Componente} & \textbf{Forma} & \textbf{Origen} & \textbf{Ubicación} \\
+\midrule
+Imagen de entrada
+  & \dims{(B, 3, 512, 512)}
+  & resize/colocar en canvas
+  & \fline{datasets/bases.py}{128} \\
+\midrule
+EfficientNet-B0 stage 9
+  & \dims{(B, 1280, 16, 16)}
+  & salida \texttt{model.features}
+  & \fline{model/visual_network.py}{29} \\
+\midrule
+DSC 1280 $\to$ 1024
+  & \dims{(B, 1024, 16, 16)}
+  & conv. separable en profundidad
+  & \fline{model/textreidnet.py}{41} \\
+\midrule
+AdaptiveMaxPool2d(1,1)
+  & \dims{(B, 1024, 1, 1)}
+  & pool global
+  & \fline{model/textreidnet.py}{42} \\
+\midrule
+DSC 1024 $\to$ 1024
+  & \dims{(B, 1024, 1, 1)}
+  & conv. separable en profundidad
+  & \fline{model/textreidnet.py}{43} \\
+\midrule
+Visual embedding final
+  & \dims{(B, 1024, 1)}
+  & \texttt{squeeze(-1)}
+  & \fline{model/textreidnet.py}{71} \\
+\midrule
+\midrule
+Tokens de texto (BERT)
+  & \dims{(B, 100)}
+  & \texttt{bert-base-uncased} + padding
+  & \fline{datasets/bert_tokenizer.py}{17} \\
+\midrule
+Embedding
+  & \dims{(B, 100, 512)}
+  & \texttt{nn.Embedding(29610, 512)}
+  & \fline{model/language_network.py}{22} \\
+\midrule
+BiGRU
+  & \dims{(B, 100, 2048)}
+  & bidir, $2 \times 1024$ ocultas
+  & \fline{model/language_network.py}{24} \\
+\midrule
+Suma fwd + bwd / 2
+  & \dims{(B, 100, 1024)}
+  & reduce a 1024 canales
+  & \fline{model/language_network.py}{68} \\
+\midrule
+Permute + unsqueeze
+  & \dims{(B, 1024, 100, 1)}
+  & prepara para DSC
+  & \fline{model/language_network.py}{69} \\
+\midrule
+Max sobre dim 2
+  & \dims{(B, 1024, 1, 1)}
+  & pool temporal
+  & \fline{model/textreidnet.py}{87} \\
+\midrule
+DSC 1024 $\to$ 1024
+  & \dims{(B, 1024, 1, 1)}
+  & conv. separable en profundidad
+  & \fline{model/textreidnet.py}{88} \\
+\midrule
+Textual embedding final
+  & \dims{(B, 1024, 1)}
+  & \texttt{squeeze(-1)}
+  & \fline{model/textreidnet.py}{88} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Por qué estas elecciones}
+
+\subsection*{¿Por qué EfficientNet-B0?}
+
+EfficientNet-B0~\cite{tan2019efficientnet} introduce el concepto de
+\emph{compound scaling}: en vez de escalar arbitrariamente
+profundidad, ancho o resolución, los escala simultáneamente con un
+coeficiente fijo derivado de una búsqueda automática. El resultado
+es un modelo con excelente relación accuracy/computo. La variante
+B0 es la más pequeña de la familia (\textasciitilde 5,3M parámetros)
+y es suficiente para la tarea de extracción de features visuales.
+
+\subsection*{¿Por qué BiGRU en lugar de LSTM o Transformer?}
+
+El paper justifica el uso de \gru{} por su eficiencia computacional:
+tiene menos parámetros que LSTM (3 compuertas vs 4) y es más rápido
+que un Transformer para secuencias cortas (100 tokens). La
+bidireccionalidad le permite capturar el contexto anterior y
+posterior, lo que mejora la comprensión de la descripción.
+
+\subsection*{¿Por qué convolución separable en profundidad (DSC)?}
+
+Una convolución separable en profundidad~\cite{howard2017mobilenets}
+factoriza una convolución estándar en dos operaciones:
+
+\begin{enumerate}
+  \item \textbf{Depthwise}: un filtro $k \times k$ por canal de
+        entrada.
+  \item \textbf{Pointwise}: una convolución $1 \times 1$ para
+        mezclar canales.
+\end{enumerate}
+
+\noindent Reduce drásticamente los parámetros y las
+multiplicaciones, con una pérdida de accuracy mínima. En este
+proyecto se usa \emph{dos} veces: para reducir 1280 $\to$ 1024
+canales visuales y para proyectar al espacio conjunto.
+
+\subsection*{¿Por qué 1024 como dimensión de embedding?}
+
+1024 es lo suficientemente grande para capturar la semántica de
+las dos modalidades, pero suficientemente pequeño para que la
+similitud del coseno sea estable y el entrenamiento sea rápido.
+Coincide con el número de unidades ocultas de la BiGRU.
+
+\section{Lo que cambia en este proyecto}
+
+El proyecto \texttt{textreid-train} implementa únicamente el
+camino de identificación (\emph{TextReIDNet}) sin el detector
+R-MHParsNet. Esto significa:
+
+\begin{itemize}
+  \item No se detecta automáticamente a las personas en imágenes
+        con múltiples personas: la entrada debe ser una imagen con
+        una sola persona (post-recortada o de datasets tipo
+        CUHK-PEDES).
+  \item Se conserva la \emph{colocación sobre canvas negro}
+        (\fline{datasets/bases.py}{43}) porque el paper entrena
+        así (las imágenes de CUHK-PEDES son menores que $512
+        \times 512$ y se colocan aleatoriamente sobre un lienzo
+        negro para preservar aspect ratio).
+  \item El tamaño de canvas es $512 \times 512$ en el código
+        (no $384 \times 128$ como en el paper). Esto es un punto
+        a tener en cuenta si se quiere reproducir exactamente los
+        números del paper.
+\end{itemize}
+
+Estos detalles se discuten con más profundidad en los capítulos
+siguientes.

@@ -1,0 +1,24 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k}{with} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{autocast}\PYG{p}{(}\PYG{n}{device\PYGZus{}type}\PYG{o}{=}\PYG{n}{config}\PYG{o}{.}\PYG{n}{device}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{n}{torch}\PYG{o}{.}\PYG{n}{float16}\PYG{p}{):}
+    \PYG{c+c1}{\PYGZsh{} Forward}
+    \PYG{n}{visual\PYGZus{}embeddings}\PYG{p}{,} \PYG{n}{textual\PYGZus{}embeddings} \PYG{o}{=} \PYG{n}{model}\PYG{p}{(}
+        \PYG{n}{image}\PYG{o}{=}\PYG{n}{preprocessed\PYGZus{}images}\PYG{p}{,}
+        \PYG{n}{text\PYGZus{}ids}\PYG{o}{=}\PYG{n}{token\PYGZus{}ids}\PYG{p}{,}
+        \PYG{n}{text\PYGZus{}length}\PYG{o}{=}\PYG{n}{orig\PYGZus{}token\PYGZus{}length}
+    \PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Aplanar a (B, 1024) \PYGZhy{} RankingLoss espera aplanados}
+    \PYG{n}{visual\PYGZus{}emb\PYGZus{}flat} \PYG{o}{=} \PYG{n}{visual\PYGZus{}embeddings}\PYG{o}{.}\PYG{n}{view}\PYG{p}{(}\PYG{n}{visual\PYGZus{}embeddings}\PYG{o}{.}\PYG{n}{size}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{),} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+    \PYG{n}{text\PYGZus{}emb\PYGZus{}flat} \PYG{o}{=} \PYG{n}{textual\PYGZus{}embeddings}\PYG{o}{.}\PYG{n}{view}\PYG{p}{(}\PYG{n}{textual\PYGZus{}embeddings}\PYG{o}{.}\PYG{n}{size}\PYG{p}{(}\PYG{l+m+mi}{0}\PYG{p}{),} \PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+    \PYG{n}{labels\PYGZus{}flat} \PYG{o}{=} \PYG{n}{labels}\PYG{o}{.}\PYG{n}{view}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} RankingLoss: triplet semi\PYGZhy{}hard}
+    \PYG{n}{ranking\PYGZus{}loss} \PYG{o}{=} \PYG{n}{ranking\PYGZus{}loss\PYGZus{}fnx}\PYG{p}{(}\PYG{n}{visual\PYGZus{}emb\PYGZus{}flat}\PYG{p}{,} \PYG{n}{text\PYGZus{}emb\PYGZus{}flat}\PYG{p}{,} \PYG{n}{labels\PYGZus{}flat}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} IdentityLoss: cross\PYGZhy{}entropy simétrica}
+    \PYG{n}{identity\PYGZus{}loss} \PYG{o}{=} \PYG{n}{identity\PYGZus{}loss\PYGZus{}fnx}\PYG{p}{(}\PYG{n}{visual\PYGZus{}embeddings}\PYG{p}{,} \PYG{n}{textual\PYGZus{}embeddings}\PYG{p}{,} \PYG{n}{labels\PYGZus{}flat}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Pérdida total: combinación ponderada}
+    \PYG{n}{total\PYGZus{}loss} \PYG{o}{=} \PYG{p}{(}\PYG{n}{config}\PYG{o}{.}\PYG{n}{ranking\PYGZus{}loss\PYGZus{}alpha} \PYG{o}{*} \PYG{n}{ranking\PYGZus{}loss}
+                  \PYG{o}{+} \PYG{n}{config}\PYG{o}{.}\PYG{n}{identity\PYGZus{}loss\PYGZus{}beta} \PYG{o}{*} \PYG{n}{identity\PYGZus{}loss}\PYG{p}{)}
+\end{MintedVerbatim}

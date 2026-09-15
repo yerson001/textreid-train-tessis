@@ -1,0 +1,15 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{p}{\PYGZob{}}
+  \PYG{l+s+s2}{\PYGZdq{}file\PYGZus{}path\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}all/7138159738431296927.jpg\PYGZdq{}}\PYG{p}{,}
+  \PYG{l+s+s2}{\PYGZdq{}captions\PYGZdq{}}\PYG{p}{:} \PYG{p}{[}
+    \PYG{l+s+s2}{\PYGZdq{}A pedestrian with dark hair is wearing red and white shoes, \PYGZdq{}}
+    \PYG{l+s+s2}{\PYGZdq{}a black hooded sweatshirt, and black pants.\PYGZdq{}}\PYG{p}{,}
+    \PYG{l+s+s2}{\PYGZdq{}The person has short black hair and is wearing black pants, \PYGZdq{}}
+    \PYG{l+s+s2}{\PYGZdq{}a long sleeve black top, and red sneakers.\PYGZdq{}}\PYG{p}{,}
+    \PYG{o}{...}
+  \PYG{p}{],}
+  \PYG{l+s+s2}{\PYGZdq{}split\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}train\PYGZdq{}}\PYG{p}{,}
+  \PYG{l+s+s2}{\PYGZdq{}processed\PYGZus{}tokens\PYGZdq{}}\PYG{p}{:} \PYG{p}{[],}
+  \PYG{l+s+s2}{\PYGZdq{}id\PYGZdq{}}\PYG{p}{:} \PYG{l+m+mi}{0}
+\PYG{p}{\PYGZcb{}}
+\end{MintedVerbatim}

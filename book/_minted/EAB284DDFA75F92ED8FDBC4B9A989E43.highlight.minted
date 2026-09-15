@@ -1,0 +1,29 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{c+c1}{\PYGZsh{} Entrada}
+\PYG{n}{text\PYGZus{}ids}\PYG{p}{:}     \PYG{p}{(}\PYG{n}{B}\PYG{p}{,} \PYG{l+m+mi}{100}\PYG{p}{)}    \PYG{n}{LongTensor}\PYG{p}{,} \PYG{n}{padded} \PYG{n}{con} \PYG{l+m+mi}{0}\PYG{n}{s}
+\PYG{n}{text\PYGZus{}length}\PYG{p}{:}  \PYG{p}{(}\PYG{n}{B}\PYG{p}{,)}        \PYG{n}{longitudes} \PYG{n}{reales} \PYG{p}{(}\PYG{l+m+mi}{5}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{50} \PYG{n}{típico}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} 1. Embedding}
+\PYG{n}{out} \PYG{o}{=} \PYG{n}{embedding}\PYG{p}{(}\PYG{n}{text\PYGZus{}ids}\PYG{p}{)}
+\PYG{c+c1}{\PYGZsh{} (B, 100) \PYGZhy{}\PYGZgt{} (B, 100, 512)}
+
+\PYG{c+c1}{\PYGZsh{} 2. Dropout (solo training)}
+\PYG{n}{out} \PYG{o}{=} \PYG{n}{dropout}\PYG{p}{(}\PYG{n}{out}\PYG{p}{)}
+\PYG{c+c1}{\PYGZsh{} (B, 100, 512)}
+
+\PYG{c+c1}{\PYGZsh{} 3. BiGRU con pack\PYGZus{}padded\PYGZus{}sequence}
+\PYG{n}{out} \PYG{o}{=} \PYG{n}{do\PYGZus{}RNN\PYGZus{}computation}\PYG{p}{(}\PYG{n}{out}\PYG{p}{,} \PYG{n}{text\PYGZus{}length}\PYG{p}{,} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{gru}\PYG{p}{)}
+\PYG{c+c1}{\PYGZsh{} (B, 100, 512) \PYGZhy{}\PYGZgt{} (B, 100, 2048) \PYGZhy{}\PYGZgt{} (B, 100, 1024) \PYGZhy{}\PYGZgt{} (B, 1024, 100, 1)}
+
+\PYG{c+c1}{\PYGZsh{} 4. Max\PYGZhy{}pool sobre tokens (en text\PYGZus{}embedding)}
+\PYG{n}{out} \PYG{o}{=} \PYG{n+nb}{max}\PYG{p}{(}\PYG{n}{out}\PYG{p}{,} \PYG{n}{dim}\PYG{o}{=}\PYG{l+m+mi}{2}\PYG{p}{)}
+\PYG{c+c1}{\PYGZsh{} (B, 1024, 1, 1)}
+
+\PYG{c+c1}{\PYGZsh{} 5. DSC compartido}
+\PYG{n}{out} \PYG{o}{=} \PYG{n}{depthwise\PYGZus{}seperable\PYGZus{}convolution}\PYG{p}{(}\PYG{n}{out}\PYG{p}{)}
+\PYG{c+c1}{\PYGZsh{} (B, 1024, 1, 1)}
+
+\PYG{c+c1}{\PYGZsh{} 6. squeeze}
+\PYG{n}{out} \PYG{o}{=} \PYG{n}{out}\PYG{o}{.}\PYG{n}{squeeze}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}\PYG{o}{.}\PYG{n}{contiguous}\PYG{p}{()}
+\PYG{c+c1}{\PYGZsh{} (B, 1024, 1)}
+\end{MintedVerbatim}

@@ -1,0 +1,362 @@
+% ============================================================
+% Capítulo 10 — Entrenamiento: conceptos + código
+% ============================================================
+\chapter{Entrenamiento: optimizador, scheduler y mixed precision}
+\label{cap:entrenamiento}
+
+Este capítulo explica los conceptos detrás del loop de
+entrenamiento y muestra el código línea por línea.
+
+\section{¿Qué es AdamW?}
+
+\subsection{Adam básico}
+
+Adam (\emph{Adaptive Moment Estimation})~\cite{kingma2014adam}
+es un optimizador que mantiene dos estadísticas por parámetro:
+
+\begin{itemize}
+  \item $m_t$: promedio exponencial del gradiente (momento 1).
+  \item $v_t$: promedio exponencial del gradiente al cuadrado
+        (momento 2).
+\end{itemize}
+
+\begin{align}
+  m_t &= \beta_1 m_{t-1} + (1 - \beta_1) g_t \\
+  v_t &= \beta_2 v_{t-1} + (1 - \beta_2) g_t^2 \\
+  \hat{m}_t &= \frac{m_t}{1 - \beta_1^t} \\
+  \hat{v}_t &= \frac{v_t}{1 - \beta_2^t} \\
+  \theta_{t+1} &= \theta_t - \eta \cdot \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}
+\end{align}
+
+\noindent\textbf{Ventaja}: adapta el learning rate por
+parámetro, lo que acelera la convergencia en problemas con
+gradientes de magnitudes muy distintas.
+
+\subsection{AdamW}
+
+AdamW~\cite{loshchilov2019adamw} separa el \emph{weight decay}
+del optimizador, en vez de aplicarlo como una regularización L2
+en la loss. Esto da una regularización más efectiva.
+
+En este proyecto:
+\begin{itemize}
+  \item $\beta_1 = 0.90$ (\texttt{config.adam\_alpha}).
+  \item $\beta_2 = 0.999$ (\texttt{config.adam\_beta}).
+  \item lr = 0.001 (\texttt{config.lr}).
+\end{itemize}
+
+\section{¿Qué es un LR scheduler?}
+
+Un \emph{learning rate scheduler} modifica el learning rate
+durante el entrenamiento. Hay varios tipos:
+
+\begin{itemize}
+  \item \textbf{Step}: decae en epochs fijos.
+  \item \textbf{Exponential}: decae exponencialmente.
+  \item \textbf{Cosine}: cae siguiendo un coseno.
+  \item \textbf{ReduceOnPlateau}: decae si la loss no mejora.
+\end{itemize}
+
+\noindent Este proyecto usa \texttt{MultiStepLR}: decae por un
+factor de 0.1 en los epochs especificados en
+\texttt{epoch\_decay = [20, 40]}.
+
+\begin{itemize}
+  \item Epochs 1--19: lr = 0.001.
+  \item Epochs 20--39: lr = 0.0001.
+  \item Epochs 40--60: lr = 0.00001.
+\end{itemize}
+
+\noindent\textbf{¿Por qué decaer?} Al principio se quiere
+aprender rápido. Cerca del óptimo, lr grande hace oscilar;
+reducirlo permite converger.
+
+\section{¿Qué es mixed precision (FP16/BF16)?}
+
+\subsection{Precisiones disponibles}
+
+\begin{itemize}
+  \item \textbf{FP32} (32 bits): precisión estándar. Ocupa 4
+        bytes por número.
+  \item \textbf{FP16} (16 bits): mitad de memoria. Acelera en
+        GPUs con Tensor Cores (NVIDIA desde Volta).
+  \item \textbf{BF16} (16 bits): mismo rango que FP32 pero
+        menos precisión. \emph{No necesita scaler}.
+\end{itemize}
+
+\subsection{El problema del FP16}
+
+FP16 tiene rango muy limitado ($\pm 65504$). Si un gradiente es
+muy pequeño ($< 6 \cdot 10^{-5}$), se redondea a 0 y
+\emph{desaparece}.
+
+\subsection{Solución: GradScaler}
+
+\texttt{torch.cuda.amp.GradScaler} multiplica la loss por un
+factor (típicamente $2^{16}$) antes del \texttt{backward}, lo
+que efectivamente \emph{amplifica} los gradientes. Luego los
+des-escala al hacer \texttt{step}:
+
+\begin{minted}[language=Python, basicstyle=\ttfamily\small, frame=single]{python}
+scaler = GradScaler()
+scaler.scale(loss).backward()      # loss * factor -> gradientes grandes
+scaler.step(optimizer)             # des-escala y aplica
+scaler.update()                    # ajusta el factor dinámicamente
+\end{minted}
+
+\subsection{Autocast}
+
+\texttt{torch.autocast} aplica casting automático de tipos:
+
+\begin{itemize}
+  \item Operaciones \emph{seguras} (matmul, conv): en FP16.
+  \item Operaciones \emph{sensibles} (log, softmax, loss): en
+        FP32.
+\end{itemize}
+
+\noindent Esto se aplica con un context manager:
+
+\begin{minted}[language=Python, basicstyle=\ttfamily\small, frame=single]{python}
+with torch.autocast(device_type='cuda', dtype=torch.float16):
+    output = model(input)
+    loss = criterion(output, target)
+\end{minted}
+
+\subsection{GPU vs CPU}
+
+En este proyecto:
+
+\begin{minted}[language=Python, basicstyle=\ttfamily\small, frame=single]{python}
+# GPU: FP16 con GradScaler
+# CPU: BF16 sin scaler (más estable)
+precision_dtype = torch.bfloat16 if config.device == 'cpu' \
+                  else torch.float16
+\end{minted}
+
+\section{¿Qué hace \texttt{optimizer.zero\_grad()}?}
+
+Por defecto PyTorch \emph{acumula} gradientes entre llamadas a
+\texttt{backward()}. Hay que \textbf{limpiar} explícitamente los
+gradientes al inicio de cada batch:
+
+\begin{minted}[language=Python, basicstyle=\ttfamily\small, frame=single]{python}
+optimizer.zero_grad()  # <- SIEMPRE antes de forward
+output = model(input)
+loss = criterion(output, target)
+loss.backward()         # acumula en .grad
+optimizer.step()        # aplica los gradientes
+\end{minted}
+
+\noindent\textbf{Alternativa}: \texttt{optimizer.zero\_grad(set\_to\_None=True)}
+libera memoria al poner los gradientes en \texttt{None} en vez de
+0.
+
+\section{¿Cómo se guarda un checkpoint?}
+
+Un checkpoint es un diccionario con todo lo necesario para
+reanudar el entrenamiento:
+
+\begin{minted}[language=Python, basicstyle=\ttfamily\small, frame=single]{python}
+checkpoint = {
+    'epoch': current_epoch,
+    'model_state_dict': model.state_dict(),
+    'optimizer_state_dict': optimizer.state_dict(),
+    'loss': current_loss
+}
+torch.save(checkpoint, 'checkpoint.pth.tar')
+\end{minted}
+
+\noindent\textbf{state\_dict}: diccionario con todos los
+parámetros del modelo (o del optimizer). Es lo que se mueve a
+GPU/CPU con \texttt{model.load\_state\_dict()}.
+
+\section{Código: \texttt{train.py} main + loop}
+
+\begin{minted}[language=Python, numbers, firstnumber=34, linerange=34-49]{python}
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train TextReIDNet on CUHK-PEDES')
+
+    # Fuente del dataset: 'huggingface' (rápido) o 'original' (paper)
+    parser.add_argument('--dataset_source', type=str, default='huggingface',
+                        choices=['huggingface', 'original'])
+    parser.add_argument('--epochs', type=int, default=None)
+    parser.add_argument('--batch_size', type=int, default=None)
+    parser.add_argument('--lr', type=float, default=None)
+    parser.add_argument('--seed', type=int, default=None)
+    parser.add_argument('--output_dir', type=str, default='./data/checkpoints')
+
+    return parser.parse_args()
+\end{minted}
+
+\begin{minted}[language=Python, numbers, firstnumber=52, linerange=52-110]{python}
+def main():
+    args = parse_args()
+
+    # Construir config desde config.py
+    config = sys_configuration(
+        dataset_name="CUHK-PEDES",
+        dataset_source=args.dataset_source
+    )
+
+    # Aplicar overrides de CLI sobre la config
+    if args.epochs is not None:
+        config['epoch'] = args.epochs
+    if args.batch_size is not None:
+        config['batch_size'] = args.batch_size
+    if args.lr is not None:
+        config['lr'] = args.lr
+    if args.seed is not None:
+        config['seed'] = args.seed
+    if args.output_dir is not None:
+        config['model_save_path'] = os.path.abspath(args.output_dir)
+        os.makedirs(config['model_save_path'], exist_ok=True)
+
+    # Fijar semilla para reproducibilidad
+    set_seed(config.seed)
+
+    # Compartir memoria via filesystem (evita errores con muchos workers)
+    torch.multiprocessing.set_sharing_strategy('file_system')
+
+    # GradScaler para mixed precision (FP16/BF16)
+    scaler = GradScaler()
+
+    # Construir DataLoaders
+    train_data_loader, _, _, train_num_classes = \
+        build_cuhkpedes_dataloader(config)
+
+    # Construir modelo y mover a device
+    model = TextReIDNet(config).to(config.device)
+
+    # IdentityLoss tiene parámetros entrenables (la capa Linear)
+    identity_loss_fnx = IdentityLoss(
+        config=config, class_num=train_num_classes
+    ).to(config.device)
+
+    # RankingLoss NO tiene parámetros entrenables
+    ranking_loss_fnx = RankingLoss(config)
+
+    # Optimizer: AdamW
+    optimizer = optim.AdamW(
+        model.parameters(),
+        betas=(config.adam_alpha, config.adam_beta),
+        lr=config.lr
+    )
+
+    # Scheduler: decae lr en epochs específicos
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, config.epoch_decay)
+\end{minted}
+
+\begin{minted}[language=Python, numbers, firstnumber=113, linerange=113-191]{python}
+for current_epoch in range(1, config.epoch + 1):
+    train_ranking_loss_list = []
+    train_identity_loss_list = []
+    train_total_loss_list = []
+
+    model.train()
+
+    with tqdm(train_data_loader, unit='batch') as tepoch:
+        tepoch.set_description(f"Epoch {current_epoch}/{config.epoch}")
+
+        for batch in tepoch:
+            # Mover datos al device
+            preprocessed_images = batch['preprocessed_images'].to(config.device)
+            labels = batch['pids'].to(config.device)
+            token_ids = batch['token_ids'].to(config.device)
+            orig_token_length = batch['orig_token_lengths'].to(config.device)
+
+            # Limpiar gradientes del batch anterior
+            optimizer.zero_grad()
+
+            # Mixed precision
+            precision_dtype = torch.bfloat16 if config.device == 'cpu' \
+                              else torch.float16
+            with torch.autocast(device_type=config.device, dtype=precision_dtype):
+                # FORWARD
+                visual_embeddings, textual_embeddings = model(
+                    image=preprocessed_images,
+                    text_ids=token_ids,
+                    text_length=orig_token_length
+                )
+
+                # Aplanar para losses
+                visual_emb_flat = visual_embeddings.view(visual_embeddings.size(0), -1)
+                text_emb_flat = textual_embeddings.view(textual_embeddings.size(0), -1)
+                labels_flat = labels.view(-1)
+
+                # Calcular losses
+                ranking_loss = ranking_loss_fnx(visual_emb_flat, text_emb_flat, labels_flat)
+                identity_loss = identity_loss_fnx(visual_embeddings, textual_embeddings, labels_flat)
+                total_loss = (config.ranking_loss_alpha * ranking_loss
+                              + config.identity_loss_beta * identity_loss)
+
+            # BACKWARD con scaler (para FP16)
+            scaler.scale(total_loss).backward()
+
+            # STEP: actualizar parámetros
+            scaler.step(optimizer)
+            scaler.update()
+
+            # Acumular losses para reporting
+            train_ranking_loss_list.append(ranking_loss.item())
+            train_identity_loss_list.append(identity_loss.item())
+            train_total_loss_list.append(total_loss.item())
+
+            tepoch.set_postfix({
+                'rank': f"{np.mean(train_ranking_loss_list):.3f}",
+                'id':   f"{np.mean(train_identity_loss_list):.3f}",
+                'tot':  f"{np.mean(train_total_loss_list):.3f}",
+            })
+
+    scheduler.step()
+
+    # Guardar checkpoint
+    ckpt_path = os.path.join(
+        config.model_save_path,
+        f"TextReIDNet_epoch{current_epoch}.pth.tar"
+    )
+    torch.save({
+        'epoch': current_epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': np.mean(train_total_loss_list),
+    }, ckpt_path)
+
+    latest_path = os.path.join(
+        config.model_save_path, "TextReIDNet_latest.pth.tar"
+    )
+    torch.save({
+        'epoch': current_epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': np.mean(train_total_loss_list),
+    }, latest_path)
+\end{minted}
+
+\section{Estimación de tiempo}
+
+Con los parámetros default (60 epochs, batch 8, FP16):
+
+\begin{itemize}
+  \item \textbf{RTX 2060}: 2--4 días.
+  \item \textbf{RTX 3090}: 16--24 horas.
+  \item \textbf{A100}: 8--12 horas.
+\end{itemize}
+
+\noindent\textbf{Nota}: el HF dataset tiene 179k muestras (vs 40k
+del original). El entrenamiento es proporcionalmente más largo
+que el paper.
+
+\section{Caveats}
+
+\begin{enumerate}
+  \item \textbf{Sin early stopping}: el código entrena los 60
+        epochs completos. \texttt{patience = 3} está en config
+        pero no se usa.
+  \item \textbf{Sin validación intermedia}: no evalúa sobre
+        val/test durante el entrenamiento.
+  \item \textbf{Sin accumulation de gradientes}: si OOM, hay
+        que bajar \texttt{batch\_size}.
+  \item \textbf{Checkpoint por epoch}: 61 archivos
+        \texttt{.pth.tar} ($\sim$250 MB cada uno para 25M
+        parámetros).
+\end{enumerate}

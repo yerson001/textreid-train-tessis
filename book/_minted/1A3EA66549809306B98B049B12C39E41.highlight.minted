@@ -1,0 +1,9 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{n}{checkpoint} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+    \PYG{l+s+s1}{\PYGZsq{}epoch\PYGZsq{}}\PYG{p}{:} \PYG{n}{current\PYGZus{}epoch}\PYG{p}{,}
+    \PYG{l+s+s1}{\PYGZsq{}model\PYGZus{}state\PYGZus{}dict\PYGZsq{}}\PYG{p}{:} \PYG{n}{model}\PYG{o}{.}\PYG{n}{state\PYGZus{}dict}\PYG{p}{(),}
+    \PYG{l+s+s1}{\PYGZsq{}optimizer\PYGZus{}state\PYGZus{}dict\PYGZsq{}}\PYG{p}{:} \PYG{n}{optimizer}\PYG{o}{.}\PYG{n}{state\PYGZus{}dict}\PYG{p}{(),}
+    \PYG{l+s+s1}{\PYGZsq{}loss\PYGZsq{}}\PYG{p}{:} \PYG{n}{current\PYGZus{}loss}
+\PYG{p}{\PYGZcb{}}
+\PYG{n}{torch}\PYG{o}{.}\PYG{n}{save}\PYG{p}{(}\PYG{n}{checkpoint}\PYG{p}{,} \PYG{l+s+s1}{\PYGZsq{}checkpoint.pth.tar\PYGZsq{}}\PYG{p}{)}
+\end{MintedVerbatim}

@@ -1,0 +1,21 @@
+# Entornos virtuales
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Modelos y checkpoints
+*.pt
+*.pth
+*.onnx
+checkpoints/
+
+# Logs y resultados
+logs/
+runs/
+
+# Datos
+data/
+
+# Variables de entorno
+.env
