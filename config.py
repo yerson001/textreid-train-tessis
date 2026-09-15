@@ -121,6 +121,9 @@ def sys_configuration(platform_name: str = platform.node(),
     if platform_name in ('PC-SIM', 'deeplearning', 'ultron', 'yrsn'):
         configs['num_workers'] = 4
         configs['batch_size'] = 8
+    elif platform_name == 'dc-2019':
+        configs['num_workers'] = 8
+        configs['batch_size'] = 16
     elif platform_name == 'nano':
         configs['num_workers'] = 2
         configs['batch_size'] = 4

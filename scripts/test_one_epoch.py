@@ -15,7 +15,6 @@ sys.path.insert(0, os.path.abspath('.'))
 import torch
 import numpy as np
 from torch import optim
-from torch.cuda.amp import GradScaler
 
 from config import sys_configuration
 from utils.miscellaneous_utils import set_seed
@@ -29,11 +28,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_batches', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=8)
+    parser.add_argument('--dataset_source', type=str, default='huggingface',
+                        choices=['huggingface', 'original'])
     parser.add_argument('--output_dir', type=str, default='./data/test_checkpoints')
     args = parser.parse_args()
 
     config = sys_configuration(dataset_name='CUHK-PEDES',
-                                dataset_source='huggingface')
+                                dataset_source=args.dataset_source)
     config['batch_size'] = args.batch_size
     config['num_workers'] = 0
     config['model_save_path'] = os.path.abspath(args.output_dir)
@@ -44,6 +45,7 @@ def main():
 
     print('=' * 60)
     print(f'TEST: {args.n_batches} batches @ batch_size={args.batch_size}')
+    print(f'Dataset source: {args.dataset_source}')
     print(f'Output: {config["model_save_path"]}')
     print('=' * 60)
 
@@ -63,7 +65,7 @@ def main():
                             betas=(config.adam_alpha, config.adam_beta),
                             lr=config.lr)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, config.epoch_decay)
-    scaler = GradScaler()
+    scaler = torch.amp.GradScaler('cuda')
 
     print('\n--- Entrenando {} batches ---'.format(args.n_batches))
     rank_losses, id_losses, tot_losses = [], [], []

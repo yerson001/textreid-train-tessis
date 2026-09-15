@@ -14,6 +14,11 @@ from datasets.tiktoken_tokenizer import TikTokenizer
 from datasets.simple_tokenizer import SimpleTokenizer
 from datasets.bert_tokenizer import BERTTokenizer
 
+try:
+    _RESAMPLE = Image.Resampling.LANCZOS
+except AttributeError:
+    _RESAMPLE = Image.ANTIALIAS
+
 
 
 def place_image_on_canvas_old(img):
@@ -28,7 +33,7 @@ def place_image_on_canvas_old(img):
     if height > 512:
         new_height = 512
         new_width = int((new_height / height) * width)
-        img = img.resize((new_width, new_height), Image.ANTIALIAS)
+        img = img.resize((new_width, new_height), _RESAMPLE)
     # Calculate random position to place the image
     max_x = max(512 - img.width, 0)  # Ensure the image is placed within the canvas
     max_y = max(512 - img.height, 0)  # Ensure the image is placed within the canvas
@@ -60,7 +65,7 @@ def place_image_on_canvas(image, new_size=(512, 512), placement_strategy='random
         aspect_ratio = image.width / image.height
         new_height, _ = new_size
         new_width = int(aspect_ratio * new_height)
-        image = image.resize((new_width, new_height), Image.ANTIALIAS)
+        image = image.resize((new_width, new_height), _RESAMPLE)
 
     # Create a new canvas with the desired size and black background
     canvas = Image.new('RGB', new_size, (0, 0, 0))

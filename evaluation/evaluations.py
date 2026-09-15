@@ -29,7 +29,7 @@ def calculate_ap(similarity, label_query, label_gallery):
     good_index = np.argwhere(label_gallery == label_query)  # the index of the same label in gallery
 
     cmc = np.zeros(index.shape)
-    mask = np.in1d(index, good_index)  # get the flag the if index[i] is in the good_index
+    mask = np.isin(index, good_index)  # get the flag the if index[i] is in the good_index
     precision_result = np.argwhere(mask==True)  # get the situation of the good_index in the index
     precision_result = precision_result.reshape(precision_result.shape[0])
 

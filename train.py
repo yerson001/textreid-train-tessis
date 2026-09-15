@@ -19,7 +19,6 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from torch import optim
-from torch.cuda.amp import GradScaler
 
 sys.path.insert(0, os.path.abspath('../textreid-train'))
 
@@ -70,7 +69,7 @@ def main():
 
     set_seed(config.seed)
     torch.multiprocessing.set_sharing_strategy('file_system')
-    scaler = GradScaler()
+    scaler = torch.amp.GradScaler('cuda')
 
     print("=" * 60)
     print(f"Dataset source: {args.dataset_source}")

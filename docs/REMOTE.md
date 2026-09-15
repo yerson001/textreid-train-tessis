@@ -1,174 +1,101 @@
-# Entorno remoto — especificaciones
+# Entorno remoto — dc-2019
 
-> **Plantilla a completar.**
-> Cuando se configure la máquina remota para entrenamiento,
-> llenar esta tabla con las especificaciones reales y cualquier
-> diferencia respecto al entorno local.
+> Configuración de la máquina remota de entrenamiento.
+> Rama `remote` del repositorio.
+> **Cero instalaciones al sistema** — el wheel de PyTorch trae su propia CUDA.
 
 ## Identificación
 
 | Campo | Valor |
 |-------|-------|
-| Hostname | _completar_ |
-| Proveedor | _ej: AWS p3.2xlarge, GCP n1-standard-8, máquina del lab, etc._ |
-| IP / hostname completo | _completar_ |
-| Sistema operativo | _ej: Ubuntu 22.04 LTS_ |
-| Kernel | _completar_ |
-| Usuario | _ej: yerson_ |
-| Fecha de setup | _YYYY-MM-DD_ |
-| Conexión SSH | _ej: `ssh user@host`_ |
+| Hostname | `dc-2019` |
+| Sistema operativo | Ubuntu 26.04.1 LTS (Resolute Raccoon) |
+| Fecha de setup | 2025-09-15 |
 
 ## Hardware
 
 | Componente | Especificación | Notas |
 |-----------|----------------|-------|
-| CPU | _ej: Intel Xeon Gold 6248 @ 2.5 GHz_ | _# cores, # threads_ |
-| RAM | _ej: 64 GB_ | |
-| Swap | _ej: 8 GB_ | |
-| GPU(s) | _ej: 1× NVIDIA A100 40 GB_ | _modelo exacto + VRAM_ |
-| Compute capability | _ej: 8.0 (Ampere)_ | |
-| Driver NVIDIA | _ej: 535.xx_ | `nvidia-smi` |
-| CUDA toolkit (build) | _ej: 12.1_ | `nvcc --version` |
-| Disco | _ej: 500 GB SSD_ | _cuánto libre_ |
+| CPU | Intel Core i7-14700F @ 2.10 GHz | 20 cores / 28 threads |
+| RAM | 30 GB | |
+| GPU | NVIDIA GeForce RTX 4070 SUPER | 12.4 GB VRAM, Ada Lovelace (sm_89) |
+| Driver NVIDIA | 595.84 | soporta CUDA hasta 13.2 |
+| CUDA toolkit (sistema) | 12.4 | **NO se usa para entrenar** — solo compilar si hiciera falta |
+| Disco | 645 GB total, ~580 GB libre | NVMe |
 
 ## Software
 
-| Componente | Versión | Notas |
-|-----------|---------|-------|
-| Python | _ej: 3.8.10_ | |
-| PyTorch | _ej: 1.13.1+cu117_ | |
-| CUDA (PyTorch) | _ej: 11.7_ | |
-| cuDNN | _ej: 8500_ | |
-| transformers | _ej: 4.46.3_ | |
-| datasets | _ej: 3.1.0_ | |
-| numpy | _ej: 1.24.4_ | |
-| Pillow | _ej: 10.4.0_ | |
+| Componente | Versión |
+|-----------|---------|
+| Python | 3.14.4 (sistema, no se instala nada) |
+| PyTorch | **2.14.0+cu126** |
+| CUDA (dentro del wheel) | 12.6 (se trae consigo, no usa el toolkit del sistema) |
+| torchvision | 0.29.0+cu126 |
+| transformers | 4.57.6 |
+| datasets | 5.0.1 |
+| numpy | 2.5.2 |
+| Pillow | 12.3.0 |
 
-Instalación (referencia):
-```bash
-# Ajustar el comando a la versión de CUDA disponible
-pip install torch==X.X.X+cuXXX torchvision \
-    --extra-index-url https://download.pytorch.org/whl/cuXXX
-pip install -r requirements.txt
-```
-
-## Entorno virtual
+## Setup (primera vez)
 
 ```bash
-# Comandos exactos para activar el entorno
-cd /path/to/textreid-train
-source .venv/bin/activate  # o conda activate, etc.
+cd textreid-train-tessis
+
+# 1. Crear entorno + instalar todo (sin sudo, sin pyenv)
+bash scripts/setup_remote.sh
+
+# 2. Activar entorno
+source .venv/bin/activate
+
+# 3. Convertir dataset original (si ya está en ~/Downloads)
+bash scripts/setup_remote.sh --with-dataset
+
+# 3b. O manualmente:
+mkdir -p data/CUHK-PEDES
+unzip ~/Downloads/CUHK-PEDES.zip "CUHK-PEDES/*" -d /tmp/u && cp -r /tmp/u/CUHK-PEDES/* data/CUHK-PEDES/ && rm -rf /tmp/u
+python scripts/convert_original_dataset.py
 ```
 
-## Configuración usada para entrenamiento
+## Dataset original (CUHK-PEDES)
+
+El zip del dataset (`~/Downloads/CUHK-PEDES.zip`) contiene:
+- `caption_all.json` — 40,206 anotaciones (sin campo `split`)
+- `imgs/` — imágenes BMP (cam_a, cam_b) y JPG (Market, CUHK03, CUHK01, queries)
+
+El script `scripts/convert_original_dataset.py` genera `reid_raw.json` con:
+- Split por rango de id: train (1–11003) / val (11004–12003) / test (12004–13003)
+- 40,206 imágenes, 13,003 personas, ~2 captions/imagen
+
+## Configuración de entrenamiento
 
 | Parámetro | Valor | Razón |
 |-----------|-------|-------|
-| `batch_size` | _ej: 32_ | _depende de VRAM disponible_ |
-| `num_workers` | _ej: 8_ | _# CPUs / 2 típicamente_ |
-| `epochs` | _ej: 60_ | |
-| Learning rate | _ej: 0.001_ | |
-| `epoch_decay` | _ej: [20, 40]_ | |
+| `batch_size` | 16 | RTX 4070 Super (12 GB, seguro) |
+| `num_workers` | 8 | i7-14700F (28 threads) |
+| `epochs` | 60 | Default |
+| Learning rate | 0.001 | Default |
+| `epoch_decay` | [20, 40] | Default |
 
-## Rendimiento esperado
-
-| Métrica | Valor estimado | Medido real |
-|---------|---------------|-------------|
-| Tiempo por batch | _ej: 0.4 s_ | |
-| VRAM peak (train) | _ej: 8 GB_ | |
-| Batches por epoch | 22\,431 (HF) / 5\,008 (original) | |
-| Tiempo por epoch | _estimar_ | |
-| Tiempo total (60 epochs) | _estimar_ | |
-
-## Pasos de deployment
+## Comandos de entrenamiento
 
 ```bash
-# 1. Clonar repo
-git clone https://github.com/yerson001/textreid-train-tessis.git
-cd textreid-train-tessis
-
-# 2. Crear venv e instalar
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cuXXX
 
-# 3. Bajar dataset (si se usa HF)
-python scripts/download_hf_dataset.py
+# Smoke test
+python scripts/test_one_epoch.py --dataset_source original --n_batches 50 --batch_size 16
 
-# 4. Smoke test
-python scripts/test_one_epoch.py --n_batches 50 --batch_size 8
+# Entrenamiento completo
+python train.py --dataset_source original --epochs 60 --batch_size 16
 
-# 5. Entrenamiento completo
-nohup python train.py --epochs 60 --batch_size 32 \
-    --output_dir ./data/checkpoints > logs/train.log 2>&1 &
-
-# 6. Monitorear
-tail -f logs/train.log
-nvidia-smi
-
-# 7. Evaluación
+# Evaluacion
 python evaluate.py \
     --checkpoint data/checkpoints/TextReIDNet_latest.pth.tar \
-    --dataset_source huggingface \
+    --dataset_source original \
     --split test
 ```
 
-## Transferencia de checkpoints a local
+## Issues conocidos
 
-```bash
-# Desde la PC remota
-scp user@remote:/path/textreid-train/data/checkpoints/TextReIDNet_latest.pth.tar ./
-
-# En la PC local
-python evaluate.py \
-    --checkpoint data/checkpoints/TextReIDNet_latest.pth.tar \
-    --dataset_source huggingface \
-    --split test
-```
-
-## Issues conocidos / Diferencias con local
-
-> Anotar cualquier incompatibilidad observada durante el setup o
-> entrenamiento (versiones diferentes, drivers faltantes, etc.)
-
-- _ejemplo: driver NVIDIA 535 vs 580 de local_
-- _ejemplo: TF32 habilitado por defecto en A100, distinto a GTX 1050_
-
-## Métricas reportadas
-
-| Split | Top-1 | Top-5 | Top-10 | mAP |
-|-------|-------|-------|--------|-----|
-| val   |       |       |        |     |
-| test  |       |       |        |     |
-
----
-
-## Plantilla rápida para llenar
-
-Si solo querés copiar y pegar lo básico:
-
-```markdown
-## Identificación
-- Hostname: 
-- OS: 
-- Fecha: 
-
-## Hardware
-- CPU: 
-- RAM: 
-- GPU: 
-- VRAM: 
-- CUDA: 
-
-## Software
-- Python: 
-- PyTorch: 
-
-## Config
-- batch_size: 
-- epochs: 
-
-## Resultados
-- test Top-1: 
-- test mAP: 
-```
+- La CUDA 12.4 del sistema (`nvcc`) no se usa: el wheel cu126 trae su propio CUDA runtime dentro de `.venv`.
+- `pysqlite3-binary` removido de requirements (innecesario en Python 3.11+).
+- `caption_all.json` no trae campo `split`: se genera con `convert_original_dataset.py`.

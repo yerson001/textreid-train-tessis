@@ -15,7 +15,7 @@ textreid-train/
 ├── config.py                  # Simplified config (training + eval only)
 ├── train.py                   # Training script
 ├── evaluate.py                # Evaluation script (Top-1, Top-5, Top-10, mAP)
-├── requirements.txt           # Python dependencies
+├── requirements-remote.txt     # Python dependencies (this machine)
 ├── model/
 │   ├── textreidnet.py         # Main ReID model
 │   ├── visual_network.py      # EfficientNet-B0 backbone
@@ -39,6 +39,7 @@ textreid-train/
 │   ├── iotools.py
 │   └── miscellaneous_utils.py
 ├── scripts/
+│   ├── setup_remote.sh         # One-command environment setup
 │   ├── download_hf_dataset.py # Downloads and converts HF dataset
 │   └── test_one_epoch.py      # Quick smoke test (50 batches)
 ├── data/                      # Created at runtime
@@ -47,7 +48,7 @@ textreid-train/
 │   └── checkpoints/           # Saved model weights
 ├── docs/
 │   ├── paper.md               # Spanish translation of paper
-│   └── LOCAL.md           # Detailed execution guide
+│   └── REMOTE.md              # Detailed execution guide (this machine)
 ├── logs/                      # Training/eval logs
 └── notebooks/
     └── 01_lab_validate_dataset.ipynb
@@ -57,29 +58,27 @@ textreid-train/
 
 ## Quick start
 
-**Para instrucciones detalladas** (instalación paso a paso, smoke test, troubleshooting, batch size por GPU, estructura del dataset): ver **`docs/LOCAL.md`**.
+**Para instrucciones detalladas** (instalación paso a paso, smoke test, troubleshooting, batch size por GPU, estructura del dataset): ver **`docs/REMOTE.md`**.
 
 Resumen rápido:
 
 ```bash
-# 1. Instalar dependencias
-pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 \
-    --extra-index-url https://download.pytorch.org/whl/cu117
-pip install -r requirements.txt
+# 1. Instalar dependencias (setup automatizado, sin sudo)
+bash scripts/setup_remote.sh
 
-# 2. Bajar el dataset (Opción A — HuggingFace, recomendado)
-python scripts/download_hf_dataset.py
+# 2. Dataset original (si ya lo descargaste por email)
+bash scripts/setup_remote.sh --with-dataset
 
-# 3. Test rápido (valida pipeline en ~1 minuto)
-python scripts/test_one_epoch.py --n_batches 50 --batch_size 8
+# 3. Test rápido (valida pipeline)
+python scripts/test_one_epoch.py --dataset_source original --n_batches 50 --batch_size 16
 
 # 4. Entrenar
-python train.py --dataset_source huggingface --epochs 60
+python train.py --dataset_source original --epochs 60 --batch_size 16
 
 # 5. Evaluar
 python evaluate.py \
     --checkpoint data/checkpoints/TextReIDNet_latest.pth.tar \
-    --dataset_source huggingface \
+    --dataset_source original \
     --split test
 ```
 
@@ -112,7 +111,7 @@ The project documents two execution environments:
 | Env | File | Description |
 |-----|------|-------------|
 | **Local** | [`docs/LOCAL.md`](docs/LOCAL.md) | This PC (`yrsn`, GTX 1050, Ubuntu 26.04). Used for development and smoke tests. |
-| **Remote** | [`docs/REMOTE.md`](docs/REMOTE.md) | Template for the remote training machine (to be filled). |
+| **Remote** | [`docs/REMOTE.md`](docs/REMOTE.md) | `dc-2019`, RTX 4070 Super (12 GB), i7-14700F, Ubuntu 26.04. Full training. |
 
 ---
 

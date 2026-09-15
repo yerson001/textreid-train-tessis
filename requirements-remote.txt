@@ -1,0 +1,13 @@
+torch==2.14.0
+torchvision==0.29.0
+numpy>=1.26
+Pillow>=10
+tqdm
+natsort
+matplotlib
+transformers>=4.20,<5
+datasets
+pyarrow
+nltk
+tiktoken
+ftfy
