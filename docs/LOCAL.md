@@ -1,13 +1,23 @@
-# Guía de ejecución — `textreid-train-tessis`
+# LOCAL — Guía de ejecución en esta PC
 
 > Documento complementario al README.
-> Contiene los pasos detallados para poner a funcionar el proyecto desde cero.
+> Contiene los pasos detallados para poner a funcionar el proyecto desde cero
+> en la máquina local (`yrsn`, GTX 1050).
 
 ---
 
 ## Índice
 
-1. [Requisitos previos](#1-requisitos-previos)
+- [LOCAL — Guía de ejecución en esta PC](#local--guía-de-ejecución-en-esta-pc)
+  1. [Requisitos previos](#1-requisitos-previos)
+  2. [Instalación](#2-instalación)
+  3. [Obtener el dataset](#3-obtener-el-dataset)
+  4. [Verificación rápida (smoke test)](#4-verificación-rápida-smoke-test)
+  5. [Entrenamiento](#5-entrenamiento)
+  6. [Evaluación](#6-evaluación)
+  7. [Solución de problemas](#7-solución-de-problemas)
+  8. [Estructura esperada del dataset original](#8-estructura-esperada-del-dataset-original)
+- [REMOTE — Guía para la máquina de entrenamiento](./REMOTE.md)
 2. [Instalación](#2-instalación)
 3. [Obtener el dataset](#3-obtener-el-dataset)
 4. [Verificación rápida (smoke test)](#4-verificación-rápida-smoke-test)
@@ -509,9 +519,11 @@ Si todo OK, estás listo para `python train.py`.
 
 ## 11. Entornos de ejecución
 
-Este proyecto se ha ejecutado en dos tipos de máquina. Las
-especificaciones exactas se documentan abajo para que al migrar a
-otra PC puedas comparar.
+Este proyecto se ha ejecutado en dos tipos de máquina:
+
+- **Local** (esta PC, host `yrsn`, GTX 1050): detalles abajo en §11.1.
+- **Remoto** (máquina potente para entrenamiento completo): ver
+  [`docs/REMOTE.md`](./REMOTE.md).
 
 ### 11.1 Local — esta PC (host: `yrsn`)
 

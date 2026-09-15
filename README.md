@@ -47,7 +47,7 @@ textreid-train/
 │   └── checkpoints/           # Saved model weights
 ├── docs/
 │   ├── paper.md               # Spanish translation of paper
-│   └── EXECUTION.md           # Detailed execution guide
+│   └── LOCAL.md           # Detailed execution guide
 ├── logs/                      # Training/eval logs
 └── notebooks/
     └── 01_lab_validate_dataset.ipynb
@@ -57,7 +57,7 @@ textreid-train/
 
 ## Quick start
 
-**Para instrucciones detalladas** (instalación paso a paso, smoke test, troubleshooting, batch size por GPU, estructura del dataset): ver **`docs/EXECUTION.md`**.
+**Para instrucciones detalladas** (instalación paso a paso, smoke test, troubleshooting, batch size por GPU, estructura del dataset): ver **`docs/LOCAL.md`**.
 
 Resumen rápido:
 
@@ -83,7 +83,7 @@ python evaluate.py \
     --split test
 ```
 
-Para el dataset original por email, ver `docs/EXECUTION.md` §3 (Opción B).
+Para el dataset original por email, ver `docs/LOCAL.md` §3 (Opción B).
 
 ---
 
@@ -101,7 +101,18 @@ Para el dataset original por email, ver `docs/EXECUTION.md` §3 (Opción B).
 - Original image quality.
 - Expected Top-1: ~54% (matches the paper).
 
-For detailed instructions on how to install, run, and troubleshoot both options, see **`docs/EXECUTION.md`**.
+For detailed instructions on how to install, run, and troubleshoot both options, see **`docs/LOCAL.md`**.
+
+---
+
+## Environments
+
+The project documents two execution environments:
+
+| Env | File | Description |
+|-----|------|-------------|
+| **Local** | [`docs/LOCAL.md`](docs/LOCAL.md) | This PC (`yrsn`, GTX 1050, Ubuntu 26.04). Used for development and smoke tests. |
+| **Remote** | [`docs/REMOTE.md`](docs/REMOTE.md) | Template for the remote training machine (to be filled). |
 
 ---
 
@@ -133,7 +144,7 @@ For detailed instructions on how to install, run, and troubleshoot both options,
 - **Joint embedding:** Both branches share the last DSC → 1024-dim vector
 - **Similarity:** Cosine
 
-For the full architecture with line-by-line explanations, see `docs/EXECUTION.md` and the PDF book at `book/main.pdf`.
+For the full architecture with line-by-line explanations, see `docs/LOCAL.md` and the PDF book at `book/main.pdf`.
 
 ---
 
