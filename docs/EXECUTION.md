@@ -504,3 +504,120 @@ Si todo OK, estás listo para `python train.py`.
 - **Cuaderno de validación**: `notebooks/01_lab_validate_dataset.ipynb`
 - **PDF libro completo** (no necesario para ejecutar): `book/main.pdf`
   - Si necesitás compilarlo: `cd book && make`
+
+---
+
+## 11. Entornos de ejecución
+
+Este proyecto se ha ejecutado en dos tipos de máquina. Las
+especificaciones exactas se documentan abajo para que al migrar a
+otra PC puedas comparar.
+
+### 11.1 Local — esta PC (host: `yrsn`)
+
+Configuración usada durante el desarrollo y las pruebas.
+
+#### Hardware
+
+| Componente | Especificación |
+|-----------|----------------|
+| Hostname | `yrsn` |
+| OS | Ubuntu 26.04 LTS (Resolute Raccoon) |
+| Kernel | 7.0.0-31-generic |
+| CPU | Intel Core i7-7700HQ @ 2.80 GHz (max 3.8 GHz) |
+| Cores / Threads | 4 cores / 8 threads |
+| RAM | 14 GB total (11 GB disponible) |
+| Swap | 4 GB |
+| GPU | NVIDIA GeForce GTX 1050 (4 GB VRAM) |
+| Compute capability | 6.1 (Pascal) |
+| Multiprocesadores | 5 SMs |
+| Driver NVIDIA | 580.173.02 |
+| CUDA toolkit (build) | 13.2 |
+| Disco | 439 GB total, ~86 GB disponible |
+
+#### Software
+
+| Componente | Versión |
+|-----------|---------|
+| Python | 3.8.10 (vía pyenv) |
+| PyTorch | 1.13.1+cu117 |
+| CUDA (PyTorch) | 11.7 |
+| cuDNN | 8500 |
+| torchvision | 0.14.1+cu117 |
+| transformers | 4.46.3 |
+| datasets | 3.1.0 |
+| tokenizers | 0.20.3 |
+| pyarrow | 17.0.0 |
+| numpy | 1.24.4 |
+| Pillow | 10.4.0 |
+| matplotlib | 3.7.5 |
+| tqdm | 4.70.1 |
+| tiktoken | 0.7.0 |
+| ftfy | 6.2.3 |
+| nltk | 3.9.1 |
+| natsort | 8.4.0 |
+| huggingface_hub | 0.36.2 |
+
+#### Entorno virtual
+
+Activación:
+```bash
+cd /home/yrsn/Dev/textreid-train
+export PYENV_VERSION=3.8.10
+source .venv/bin/activate
+```
+
+Python resuelto vía `.venv` (pyenv 3.8.10). Verificable con:
+```bash
+which python  # debe apuntar a /home/yrsn/Dev/textreid-train/.venv/bin/python
+python --version  # Python 3.8.10
+```
+
+#### Rendimiento medido (en esta PC)
+
+Con GTX 1050 + batch_size=8 + FP16:
+
+| Métrica | Valor |
+|---------|-------|
+| Tiempo por batch | ~2.16 s |
+| VRAM peak (train) | ~2.82 GB |
+| VRAM peak (eval, batch 32) | ~2.0 GB |
+| Batches por epoch (HF) | 22\,431 |
+| Tiempo por epoch | \textasciitilde 13 h |
+| Tiempo total (60 epochs) | \textasciitilde 32 días (no viable) |
+| Tiempo evaluación completa | \textasciitilde 3 min (test, 4256 img + 29\,930 txt) |
+
+**Conclusión**: esta PC sirve para desarrollo y validación, pero el
+entrenamiento completo de 60 epochs es inviable. Usar el smoke
+test (50 batches) o migrar a una máquina remota más potente.
+
+#### Limitaciones observadas
+
+- GPU clase 6.1 (Pascal, 2016): no soporta algunas instrucciones
+  modernas de CUDA, pero funciona correctamente.
+- 4 GB VRAM: limita `batch_size` a 4–8. Cualquier cosa mayor da OOM.
+- CPU clase i7-7700HQ (2017): suficientemente rápido para data
+  loading, pero no para cómputo numérico pesado.
+
+### 11.2 Remoto — máquina potente
+
+Ver [`docs/REMOTE.md`](REMOTE.md) para las especificaciones de la
+máquina remota que se usará para el entrenamiento completo.
+
+---
+
+## 12. Reproducibilidad entre máquinas
+
+Para reproducir los mismos resultados en otra máquina:
+
+1. **Misma semilla**: `--seed 3407` (config default).
+2. **Mismo dataset**: usar el mismo split (HF o original).
+3. **Mismas versiones de PyTorch y CUDA**: idealmente `torch==1.13.1+cu117`.
+4. **Misma configuración de hardware**: misma VRAM disponible y
+   mismo `batch_size`.
+
+Diferencias inevitables:
+- Orden de operaciones de punto flotante (no determinístico en
+  CUDA aunque se use `set_seed`).
+- Velocidad: cambia con la GPU.
+- Número de workers: ajustar `num_workers` al CPU disponible.
