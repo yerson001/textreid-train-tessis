@@ -38,3 +38,9 @@ book/
 
 # Outputs temporales
 *.tmp
+
+# Demo (runtime: uploads, resultado anotado, imágenes de escena de prueba)
+demo/uploads/
+demo/static/
+demo/scene/
+demo/out/

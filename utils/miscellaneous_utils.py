@@ -26,8 +26,8 @@ def set_seed(seed_value:int=3407):
     torch.manual_seed(seed_value)
     torch.cuda.manual_seed(seed_value)
     torch.cuda.manual_seed_all(seed_value)  # if you are using multi-GPU.
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = False
+    torch.backends.cudnn.benchmark = True
 
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++

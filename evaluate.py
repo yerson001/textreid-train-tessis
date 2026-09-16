@@ -110,7 +110,7 @@ def main():
 
     # Load checkpoint
     print(f"Loading checkpoint from {args.checkpoint}...")
-    ckpt = torch.load(args.checkpoint, map_location=config.device)
+    ckpt = torch.load(args.checkpoint, map_location=config.device, weights_only=False)
     if 'model_state_dict' in ckpt:
         model.load_state_dict(ckpt['model_state_dict'])
     else:

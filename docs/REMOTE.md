@@ -39,7 +39,7 @@
 ## Setup (primera vez)
 
 ```bash
-cd textreid-train-tessis
+cd textreid_train
 
 # 1. Crear entorno + instalar todo (sin sudo, sin pyenv)
 bash scripts/setup_remote.sh

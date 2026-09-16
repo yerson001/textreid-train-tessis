@@ -61,8 +61,8 @@ nvidia-smi
 ### 2.1 Clonar el repositorio
 
 ```bash
-git clone https://github.com/yerson001/textreid-train-tessis.git
-cd textreid-train-tessis
+git clone https://github.com/yerson001/textreid_train.git
+cd textreid_train
 ```
 
 ### 2.2 Crear entorno virtual (recomendado)

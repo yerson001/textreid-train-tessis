@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Resultado TextReIDNet</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.4rem; }
+  img { max-width: 100%; border: 1px solid #ccc; border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+  th, td { border: 1px solid #ccc; padding: .45rem .6rem; text-align: left; font-size: .92rem; }
+  th { background: #f3f3f3; }
+  .best td { background: #e6f7ea; }
+  a.back { display: inline-block; margin-top: 1rem; color: #1a8f3c; }
+  .note { color: #666; font-size: .85rem; margin-top: .5rem; }
+</style>
+</head>
+<body>
+  <h1>Resultado</h1>
+  <p><strong>Prompt:</strong> {{ text }}</p>
+  <p class="note">Personas detectadas: {{ detected }} &middot; checkpoint época {{ ckpt_epoch }}. &middot;
+  Verde = mejor coincidencia con el texto. % = softmax relativo dentro de la escena.</p>
+  <img src="{{ image_url }}" alt="Resultado anotado">
+
+  <table>
+    <tr><th>Rank</th><th>Coincidencia</th><th>Sim. coseno</th></tr>
+    {% for r in results[:6] %}
+    <tr class="{% if r.rank == 1 %}best{% endif %}">
+      <td>#{{ r.rank }}</td>
+      <td>{{ "%.0f"|format(r.prob * 100) }}%</td>
+      <td>{{ "%.3f"|format(r.score) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <a class="back" href="/">&larr; Otra búsqueda</a>
+</body>
+</html>

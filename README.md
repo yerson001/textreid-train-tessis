@@ -1,4 +1,4 @@
-# textreid-train-tessis
+# textreid_train
 
 A clean, training-only version of the **DecentralizedTextReIDNet** project.
 

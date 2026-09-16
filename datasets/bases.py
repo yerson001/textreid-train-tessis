@@ -130,16 +130,10 @@ class ImageTextDataset(Dataset):
         pid, image_id, img_path, caption = self.dataset[index]
         pid = torch.from_numpy(np.array([pid])).long()
         img = read_image(img_path)
-        img = place_image_on_canvas(img)
-        original_img = img.copy() # copy to get the original image
         if self.transform is not None:
             img = self.transform(img)
-
-        # convert original image to tensor without scaling to [0,1],
-        # Tensor divides by pixels by 255 by the way. We will avoid that.
-        # Reason? Keeping things simple for now until I figure somethings out, design-wise.
-        original_img = np.array(original_img) # (H,W,C)
-        original_img = torch.from_numpy(original_img).permute(2, 0, 1).to(torch.uint8) #  #(C, H, W)
+        else:
+            img = torch.from_numpy(np.array(img)).permute(2, 0, 1).to(torch.uint8)
 
         tokens = self.tokenizer(caption) # eg. torch.tensor([1165, 13, 564, 74, ..., 1167])
         token_ids, orig_token_length  = pad_tokens(tokens, self.tokens_length_max)
@@ -148,7 +142,6 @@ class ImageTextDataset(Dataset):
                'image_ids': image_id,
                'img_paths': img_path,
                'preprocessed_images': img,
-               'original_images':original_img,
                'token_ids': token_ids.to(torch.long),
                'orig_token_lengths': orig_token_length,
                'captions':caption}
@@ -171,7 +164,6 @@ class ImageDataset(Dataset):
     def __getitem__(self, index):
         pid, img_path = self.image_pids[index], self.img_paths[index]
         img = read_image(img_path)
-        img = place_image_on_canvas(img)
         if self.transform is not None:
             img = self.transform(img)
         return img, pid, img_path

@@ -69,5 +69,5 @@ class RankingLoss(nn.Module):
                                   - similarity[text_triplets[:, 0], text_triplets[:, 1]]
                                   + similarity[text_triplets[:, 0], text_triplets[:, 2]])
 
-        loss = torch.sum(image_anchor_loss) + torch.sum(texy_anchor_loss)
+        loss = image_anchor_loss.mean() + texy_anchor_loss.mean()
         return loss

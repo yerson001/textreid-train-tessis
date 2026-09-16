@@ -61,7 +61,7 @@ def main():
     total_params = sum(p.numel() for p in model.parameters())
     print(f'Total parámetros: {total_params / 1e6:.2f}M')
 
-    optimizer = optim.AdamW(model.parameters(),
+    optimizer = optim.AdamW([*model.parameters(), *identity_loss_fnx.parameters()],
                             betas=(config.adam_alpha, config.adam_beta),
                             lr=config.lr)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, config.epoch_decay)

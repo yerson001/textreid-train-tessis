@@ -45,6 +45,9 @@ def parse_args():
                         help='Override seed from config')
     parser.add_argument('--output_dir', type=str, default='./data/checkpoints',
                         help='Where to save model checkpoints')
+    parser.add_argument('--resume', type=str, nargs='?', const='LATEST', default=None,
+                        help='Path to a checkpoint to resume from (epoch N+1). '
+                             'With no value, resumes from TextReIDNet_latest.pth.tar')
     return parser.parse_args()
 
 
@@ -93,9 +96,30 @@ def main():
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Total model parameters: {total_params / 1e6:.2f}M")
 
-    # Optimizer
-    optimizer = optim.AdamW(model.parameters(), betas=(config.adam_alpha, config.adam_beta), lr=config.lr)
+    # Optimizer: incluye tambien los parametros del clasificador de identidad
+    # (antes solo se optimizaba `model`, dejando el clasificador congelado).
+    optimizer = optim.AdamW([*model.parameters(), *identity_loss_fnx.parameters()],
+                            betas=(config.adam_alpha, config.adam_beta), lr=config.lr)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, config.epoch_decay)
+
+    # Resume from checkpoint (if requested)
+    start_epoch = 1
+    if args.resume:
+        ckpt_path = args.resume
+        if ckpt_path == 'LATEST':
+            ckpt_path = os.path.join(config.model_save_path, "TextReIDNet_latest.pth.tar")
+        if not os.path.isfile(ckpt_path):
+            print(f"Resume checkpoint not found: {ckpt_path}")
+            sys.exit(1)
+        checkpoint = torch.load(ckpt_path, map_location=config.device, weights_only=False)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        if 'scheduler_state_dict' in checkpoint:
+            scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        if 'scaler_state_dict' in checkpoint:
+            scaler.load_state_dict(checkpoint['scaler_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        print(f"Resuming from epoch {checkpoint['epoch']} -> continuing at epoch {start_epoch}")
 
     # Logging
     os.makedirs(os.path.dirname(config.train_log_path), exist_ok=True)
@@ -109,7 +133,7 @@ def main():
     train_logger.info(f"Number of classes: {train_num_classes}")
 
     # Training loop
-    for current_epoch in range(1, config.epoch + 1):
+    for current_epoch in range(start_epoch, config.epoch + 1):
         train_ranking_loss_list = []
         train_identity_loss_list = []
         train_total_loss_list = []
@@ -174,7 +198,9 @@ def main():
             'epoch': current_epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'loss': np.mean(train_total_loss_list),
+            'scheduler_state_dict': scheduler.state_dict(),
+            'scaler_state_dict': scaler.state_dict(),
+            'loss': float(np.mean(train_total_loss_list)),
         }, ckpt_path)
 
         # Also save 'latest'
@@ -183,7 +209,9 @@ def main():
             'epoch': current_epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'loss': np.mean(train_total_loss_list),
+            'scheduler_state_dict': scheduler.state_dict(),
+            'scaler_state_dict': scaler.state_dict(),
+            'loss': float(np.mean(train_total_loss_list)),
         }, latest_path)
 
     print("Training complete.")

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>TextReIDNet &middot; Person Search con texto</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.4rem; }
+  p.sub { color: #666; }
+  form { border: 1px solid #ccc; border-radius: 10px; padding: 1.2rem; display: grid; gap: .8rem; }
+  input[type=file] { font-size: 1rem; }
+  input[type=text] { font-size: 1.05rem; padding: .5rem; border: 1px solid #999; border-radius: 6px; }
+  button { padding: .6rem 1rem; font-size: 1rem; background: #22b14c; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+  button:hover { background: #1a8f3c; }
+  .warn { background: #fff3cd; border: 1px solid #f0d48a; padding: .6rem; border-radius: 6px; font-size: .9rem; }
+  .note { background: #e7f3ff; border: 1px solid #b8d7f5; padding: .6rem; border-radius: 6px; font-size: .85rem; margin-top: 1rem; }
+</style>
+</head>
+<body>
+  <h1>Demo TextReIDNet &middot; imagen con personas + texto</h1>
+  <p class="sub">Escribe una descripcion de la persona que buscas. La app detecta a cada persona, la compara
+  con el texto y muestra el ranking con bounding boxes (verde = mejor coincidencia).</p>
+
+  {% if not ckpt_found %}
+  <div class="warn">No se encontro <code>data/checkpoints/TextReIDNet_latest.pth.tar</code>.
+  Entrenalo primero con <code>python train.py --dataset_source original --epochs 60 --batch_size 128</code>.</div>
+  {% endif %}
+
+  {% if error %}<div class="warn">{{ error }}</div>{% endif %}
+
+  <form method="post" action="/search" enctype="multipart/form-data">
+    <label><strong>1. Imagen con una o varias personas</strong>
+      <input type="file" name="image" accept="image/*" required>
+    </label>
+    <label><strong>2. Descripcion textual (en ingles funciona mejor, ej. <em>"man in a blue jacket carrying a backpack"</em>)</strong>
+      <input type="text" name="text" maxlength="500" required placeholder='man in a blue jacket holding a backpack'>
+    </label>
+    <button type="submit">Buscar</button>
+  </form>
+
+  <div class="note">Modelo: TextReIDNet (EfficientNet-B0 + GRU, 60 epocas, Top-1 47% en CUHK-PEDES) &middot;
+  Detector: YOLO26n-pose.</div>
+</body>
+</html>

@@ -26,7 +26,8 @@ def build_cuhkpedes_dataloader(config: dict = None):
         config: config dict with keys:
             - dataset_source: 'huggingface' or 'original'
             - dataset_path: path to the dataset
-            - MHPV2_means, MHPV2_stds: for normalization
+            - CUHKPEDES_image_size: input size (H, W) del paper
+            - mean, std: normalizacion de CUHK-PEDES
             - tokenizer_type, tokens_length_max
             - batch_size, num_workers
             - model_testing_data_split: 'val' or 'test'
@@ -37,13 +38,20 @@ def build_cuhkpedes_dataloader(config: dict = None):
     else:
         dataset_object = CUHKPEDES(config)
 
+    # Input del paper: imagen centrada en la persona, resized a 384x128 (HxW)
+    # usando los means/stds de CUHK-PEDES (no los de MHPV2, que eran para 512x512).
+    image_size = tuple(config.CUHKPEDES_image_size)
     train_transform = T.Compose([
+        T.Resize(image_size, T.InterpolationMode.BICUBIC),
+        T.RandomHorizontalFlip(p=0.5),
         T.ToTensor(),
-        T.Normalize(mean=config.MHPV2_means, std=config.MHPV2_stds)
+        T.RandomErasing(p=0.25, scale=(0.02, 0.2), ratio=(0.3, 3.3), value=0),
+        T.Normalize(mean=config.mean, std=config.std)
     ])
     inference_transform = T.Compose([
+        T.Resize(image_size, T.InterpolationMode.BICUBIC),
         T.ToTensor(),
-        T.Normalize(mean=config.MHPV2_means, std=config.MHPV2_stds)
+        T.Normalize(mean=config.mean, std=config.std)
     ])
     train_num_classes = len(dataset_object.train_id_container)
 
