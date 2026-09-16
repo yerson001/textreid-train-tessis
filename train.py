@@ -45,6 +45,20 @@ def parse_args():
                         help='Override seed from config')
     parser.add_argument('--output_dir', type=str, default='./data/checkpoints',
                         help='Where to save model checkpoints')
+    parser.add_argument('--tokenizer_type', type=str, default=None,
+                        choices=['bert', 'bpe_en_es'],
+                        help='Override tokenizer (bpe_en_es = tokenizador bilingue EN-ES)')
+    parser.add_argument('--vocab_size', type=int, default=None,
+                        help='Override vocab size (debe coincidir con el tokenizador)')
+    parser.add_argument('--embedding_dim', type=int, default=None,
+                        help='Override text embedding dim')
+    parser.add_argument('--feature_length', type=int, default=None,
+                        help='Override joint feature dim (embedding final)')
+    parser.add_argument('--bilingual', action='store_true',
+                        help='Usar reid_raw_bilingue.json y mezclar captions EN+ES en train')
+    parser.add_argument('--evaluate_language', type=str, default=None,
+                        choices=['en', 'es'],
+                        help='Idioma de las captions de val/test para evaluar')
     parser.add_argument('--resume', type=str, nargs='?', const='LATEST', default=None,
                         help='Path to a checkpoint to resume from (epoch N+1). '
                              'With no value, resumes from TextReIDNet_latest.pth.tar')
@@ -70,6 +84,19 @@ def main():
         config['model_save_path'] = os.path.abspath(args.output_dir)
         os.makedirs(config['model_save_path'], exist_ok=True)
 
+    if args.tokenizer_type is not None:
+        config['tokenizer_type'] = args.tokenizer_type
+    if args.vocab_size is not None:
+        config['vocab_size'] = args.vocab_size
+    if args.embedding_dim is not None:
+        config['embedding_dim'] = args.embedding_dim
+    if args.feature_length is not None:
+        config['feature_length'] = args.feature_length
+    if args.bilingual:
+        config['bilingual'] = True
+    if args.evaluate_language is not None:
+        config['evaluate_language'] = args.evaluate_language
+
     set_seed(config.seed)
     torch.multiprocessing.set_sharing_strategy('file_system')
     scaler = torch.amp.GradScaler('cuda')
@@ -80,6 +107,8 @@ def main():
     print(f"Epochs:         {config.epoch}")
     print(f"Batch size:     {config.batch_size}")
     print(f"Learning rate:  {config.lr}")
+    print(f"Tokenizer:      {config.tokenizer_type} | vocab {config.vocab_size}")
+    print(f"Bilingual:      {config.get('bilingual', False)}")
     print(f"Device:         {config.device}")
     print("=" * 60)
 

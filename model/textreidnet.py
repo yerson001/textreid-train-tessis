@@ -41,6 +41,8 @@ class TextReIDNet(nn.Module):
         self.visual_features_downscale = DepthwiseSeparableConv(1280, 1024)
         self.adaptive_max_pooling = nn.AdaptiveMaxPool2d((1, 1))
         self.depthwise_seperable_convolution = DepthwiseSeparableConv(1024, self.configs.feature_length)
+        self.text_final_convolution = DepthwiseSeparableConv(self.configs.feature_length,
+                                                             self.configs.feature_length)
 
     def forward(self, image, text_ids:torch.tensor=None, text_length:torch.tensor=None)->list:
         """
@@ -85,7 +87,7 @@ class TextReIDNet(nn.Module):
         """
         textual_features = self.language_network(text_ids,text_length)
         textual_features, _ = torch.max(textual_features, dim=2, keepdim=True)
-        textual_features = self.depthwise_seperable_convolution(textual_features).squeeze(-1).contiguous()
+        textual_features = self.text_final_convolution(textual_features).squeeze(-1).contiguous()
         return textual_features
 
 

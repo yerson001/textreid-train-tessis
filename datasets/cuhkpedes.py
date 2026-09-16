@@ -44,7 +44,14 @@ class CUHKPEDES(object):
         super(CUHKPEDES, self).__init__()
         self.dataset_dir = config.dataset_path
         self.img_dir = op.join(self.dataset_dir, 'imgs/')
-        self.anno_path = op.join(self.dataset_dir, 'reid_raw.json')
+        self.bilingual = bool(config.get('bilingual', False))
+        self.evaluate_language = str(config.get('evaluate_language', 'en'))
+        if self.evaluate_language not in ('en', 'es'):
+            raise ValueError("evaluate_language must be 'en' or 'es'")
+        if self.bilingual:
+            self.anno_path = op.join(self.dataset_dir, 'reid_raw_bilingue.json')
+        else:
+            self.anno_path = op.join(self.dataset_dir, 'reid_raw.json')
 
         self.ID_starting_point = dict(train=0, # (0-11002)
                                       val=11003, # (11003-12002)
@@ -81,9 +88,12 @@ class CUHKPEDES(object):
                 pid = int(anno['id']) - 1 # make pid begin from 0
                 pid_container.add(pid)
                 img_path = op.join(self.img_dir, anno['file_path'])
-                captions = anno['captions'] # caption list
-                for caption in captions:
-                    dataset.append((pid, image_id, img_path, caption))
+                languages = [anno['captions']]
+                if self.bilingual:
+                    languages.append(anno.get('captions_es', []))
+                for captions in languages:
+                    for caption in captions:
+                        dataset.append((pid, image_id, img_path, caption))
                 image_id += 1
             for idx, pid in enumerate(pid_container):
                 # check pid begin from 0 and no break
@@ -102,7 +112,10 @@ class CUHKPEDES(object):
                 img_path = op.join(self.img_dir, anno['file_path'])
                 img_paths.append(img_path)
                 image_pids.append(pid)
-                caption_list = anno['captions'] # caption list
+                if self.evaluate_language == 'es':
+                    caption_list = anno.get('captions_es', []) or anno['captions']
+                else:
+                    caption_list = anno['captions']
                 for caption in caption_list:
                     captions.append(caption)
                     caption_pids.append(pid)

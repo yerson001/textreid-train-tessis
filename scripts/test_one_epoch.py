@@ -31,6 +31,12 @@ def main():
     parser.add_argument('--dataset_source', type=str, default='huggingface',
                         choices=['huggingface', 'original'])
     parser.add_argument('--output_dir', type=str, default='./data/test_checkpoints')
+    parser.add_argument('--tokenizer_type', type=str, default=None,
+                        choices=['bert', 'bpe_en_es'])
+    parser.add_argument('--vocab_size', type=int, default=None)
+    parser.add_argument('--embedding_dim', type=int, default=None)
+    parser.add_argument('--feature_length', type=int, default=None)
+    parser.add_argument('--bilingual', action='store_true')
     args = parser.parse_args()
 
     config = sys_configuration(dataset_name='CUHK-PEDES',
@@ -39,6 +45,17 @@ def main():
     config['num_workers'] = 0
     config['model_save_path'] = os.path.abspath(args.output_dir)
     os.makedirs(config['model_save_path'], exist_ok=True)
+
+    if args.tokenizer_type is not None:
+        config['tokenizer_type'] = args.tokenizer_type
+    if args.vocab_size is not None:
+        config['vocab_size'] = args.vocab_size
+    if args.embedding_dim is not None:
+        config['embedding_dim'] = args.embedding_dim
+    if args.feature_length is not None:
+        config['feature_length'] = args.feature_length
+    if args.bilingual:
+        config['bilingual'] = True
 
     set_seed(config.seed)
     torch.multiprocessing.set_sharing_strategy('file_system')

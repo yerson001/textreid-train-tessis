@@ -35,6 +35,18 @@ def parse_args():
                         choices=['test', 'val'])
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--device', type=str, default='cuda')
+    parser.add_argument('--tokenizer_type', type=str, default=None,
+                        choices=['bert', 'bpe_en_es'],
+                        help='Override tokenizer (bpe_en_es = bilingue EN-ES)')
+    parser.add_argument('--vocab_size', type=int, default=None,
+                        help='Override vocab size (debe coincidir con el tokenizador)')
+    parser.add_argument('--embedding_dim', type=int, default=None,
+                        help='Override text embedding dim')
+    parser.add_argument('--feature_length', type=int, default=None,
+                        help='Override joint feature dim')
+    parser.add_argument('--evaluate_language', type=str, default=None,
+                        choices=['en', 'es'],
+                        help='Idioma de las captions de val/test')
     return parser.parse_args()
 
 
@@ -93,10 +105,23 @@ def main():
     config['device'] = args.device
     config['model_testing_data_split'] = args.split
 
+    if args.tokenizer_type is not None:
+        config['tokenizer_type'] = args.tokenizer_type
+    if args.vocab_size is not None:
+        config['vocab_size'] = args.vocab_size
+    if args.embedding_dim is not None:
+        config['embedding_dim'] = args.embedding_dim
+    if args.feature_length is not None:
+        config['feature_length'] = args.feature_length
+    if args.evaluate_language is not None:
+        config['evaluate_language'] = args.evaluate_language
+
     print("=" * 60)
     print(f"Checkpoint:     {args.checkpoint}")
     print(f"Dataset source: {args.dataset_source}")
     print(f"Split:          {args.split}")
+    print(f"Tokenizer:      {config.tokenizer_type} | vocab {config.vocab_size}")
+    print(f"Lang (eval):    {config.evaluate_language}")
     print(f"Device:         {args.device}")
     print("=" * 60)
 

@@ -13,6 +13,7 @@ from utils.miscellaneous_utils import pad_tokens
 from datasets.tiktoken_tokenizer import TikTokenizer
 from datasets.simple_tokenizer import SimpleTokenizer
 from datasets.bert_tokenizer import BERTTokenizer
+from datasets.bpe_tokenizer import BPETokenizer
 
 try:
     _RESAMPLE = Image.Resampling.LANCZOS
@@ -105,6 +106,9 @@ class ImageTextDataset(Dataset):
         if tokenizer_type == "bert":
             self.tokenizer = BERTTokenizer()
 
+        elif tokenizer_type == "bpe_en_es":
+            self.tokenizer = BPETokenizer()
+
         elif tokenizer_type == "simple_tokenizer":
             self.tokenizer = SimpleTokenizer()
         
@@ -184,6 +188,9 @@ class TextDataset(Dataset):
         # create the appropriate tokenizer type
         if tokenizer_type == "bert":
             self.tokenizer = BERTTokenizer()
+
+        elif tokenizer_type == "bpe_en_es":
+            self.tokenizer = BPETokenizer()
 
         elif tokenizer_type == "simple_tokenizer":
             self.tokenizer = SimpleTokenizer()

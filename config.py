@@ -41,6 +41,8 @@ def sys_configuration(platform_name: str = platform.node(),
     configs['tokenizer_type'] = 'bert'
     configs['vocab_size'] = 29609 + 1  # BERT vocab size + 1
     configs['embedding_dim'] = 512
+    configs['bilingual'] = False  # entrenar con captions EN+ES (reid_raw_bilingue.json)
+    configs['evaluate_language'] = 'en'  # 'es' usa captions_es en val/test
 
     # +++++++++++++++++++++++++++++++++++++++++++++++++
     # ++++++++++++[Visual Model Configuration]+++++++++
