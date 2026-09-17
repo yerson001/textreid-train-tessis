@@ -136,10 +136,15 @@ def main():
     # Load checkpoint
     print(f"Loading checkpoint from {args.checkpoint}...")
     ckpt = torch.load(args.checkpoint, map_location=config.device, weights_only=False)
-    if 'model_state_dict' in ckpt:
-        model.load_state_dict(ckpt['model_state_dict'])
+    sd = ckpt['model_state_dict'] if 'model_state_dict' in ckpt else ckpt
+    # Compatibilidad con checkpoints antiguos (baseline): la rama textual usaba
+    # la misma DSC que la visual (no existia text_final_convolution).
+    if not any(k.startswith('text_final_convolution') for k in sd):
+        model.text_final_convolution = model.depthwise_seperable_convolution
+        model.load_state_dict(sd, strict=False)
+        print("(checkpoint antiguo: rama textual usa el DSC compartido)")
     else:
-        model.load_state_dict(ckpt)
+        model.load_state_dict(sd)
     print("Checkpoint loaded.")
 
     # Extract features
