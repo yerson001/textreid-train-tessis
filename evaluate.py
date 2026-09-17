@@ -115,6 +115,9 @@ def main():
         config['feature_length'] = args.feature_length
     if args.evaluate_language is not None:
         config['evaluate_language'] = args.evaluate_language
+        config['bilingual'] = True
+    if args.tokenizer_type == 'bpe_en_es':
+        config['bilingual'] = True
 
     print("=" * 60)
     print(f"Checkpoint:     {args.checkpoint}")
